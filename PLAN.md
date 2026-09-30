@@ -34,7 +34,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
       with migration for existing DBs, CLI `--region`.
 - [x] **S3 Crawl window** — `--until HH:MM` graceful stop (handles past-midnight), skip a console's list
       if crawled within `--list-fresh-hours`.
-- [ ] **S4 Weekend schedule** — launchd plist generator + `schedule.sh install|uninstall|status`;
+- [x] **S4 Weekend schedule** — launchd plist generator + `schedule.sh install|uninstall|status`;
       Sat & Sun 01:00 start, stops 23:00.
 - [ ] **S5 ESRB** — parse & store ESRB rating.
 

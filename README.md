@@ -26,6 +26,18 @@ recently), `--release-date YYYY-MM-DD`.
 Details are prioritized across all selected consoles: never-fetched titles first, then the stalest,
 so a crawl spread over several weekends always makes forward progress.
 
+## Weekend schedule
+
+```sh
+./schedule.sh install     # Sat & Sun 01:00 → stops 23:00 (launchd LaunchAgent)
+./schedule.sh status      # state, last exit code, tail of logs/crawl.log
+./schedule.sh uninstall
+```
+
+It runs in your logged-in session (headed Chrome needs it). If the Mac is asleep at 01:00 the
+job runs on wake, but only on Saturday or Sunday. To wake the Mac for it:
+`sudo pmset repeat wakeorpoweron SU 00:55:00`.
+
 ## How it works
 
 - Cloudflare blocks plain HTTP and Playwright-launched Chrome, so the crawler starts the
