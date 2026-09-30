@@ -234,3 +234,42 @@ def watchlist_consoles(conn: sqlite3.Connection) -> list[str]:
         return []
     vals = [r[0] for r in conn.execute("SELECT DISTINCT console FROM watchlist")]
     return sorted(vals, key=lambda v: (_ORDER.get(v, len(_ORDER)), v))
+
+
+MAX_COMPARE = 6
+
+
+def compare_series(conn: sqlite3.Connection, ids: list[int], cond: str = "loose", mode: str = "raw") -> list[dict]:
+    """One line per title. raw = $; rebased = 100 at the common start month; index = rebased and divided by
+    the title's own console index (so 100 → 150 means 50% better than the median title on that console)."""
+    assert cond in CONDITIONS and mode in ("raw", "rebased", "index")
+    if mode == "index" and not table_exists(conn, "console_index"):
+        return []
+    out = []
+    for gid in ids:
+        g = conn.execute("SELECT id, name, console FROM games WHERE id = ?", (gid,)).fetchone()
+        pts = history(conn, gid).get(cond) if g else None
+        if not pts:
+            continue
+        if mode == "index":
+            level = dict(conn.execute(
+                "SELECT month, level FROM console_index WHERE console = ? AND condition = ? AND level IS NOT NULL",
+                (g["console"], cond)).fetchall())
+            pts = [(m, c, level[m]) for m, c in pts if m in level]
+        else:
+            pts = [(m, c, 0.0) for m, c in pts]
+        if pts:
+            out.append({"id": g["id"], "name": g["name"], "console": g["console"], "pts": pts})
+    if mode != "raw" and out:
+        start = max(s["pts"][0][0] for s in out)
+        out = [s for s in out if s["pts"][-1][0] >= start]
+    for s in out:
+        pts = s.pop("pts")
+        if mode == "raw":
+            s["x"], s["y"] = [m for m, _, _ in pts], [c / 100 for _, c, _ in pts]
+            continue
+        pts = [p for p in pts if p[0] >= start]
+        _, c0, l0 = pts[0]
+        s["x"] = [m for m, _, _ in pts]
+        s["y"] = [round(100 * c / c0 * math.exp(l0 - lv), 3) for _, c, lv in pts]
+    return out

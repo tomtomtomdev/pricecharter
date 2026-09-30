@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %} · compare{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block content %}
+<h1>Compare</h1>
+<div class="chips">
+  {% for c in chips %}
+  <span class="chip"><span class="key" style="background: var(--cat-{{ loop.index }})"></span>
+    <a href="/games/{{ c.id }}">{{ c.name }}</a> <span class="muted">{{ c.console }}</span>
+    <a class="remove" href="/compare?ids={{ c.without }}&amp;cond={{ cond }}&amp;mode={{ mode }}" aria-label="remove {{ c.name }}">×</a></span>
+  {% endfor %}
+  {% if not full %}
+  <span class="add">
+    <input type="search" name="q" placeholder="Add a title…" autocomplete="off" aria-label="add a title"
+           hx-get="/compare/suggest" hx-trigger="input changed delay:250ms" hx-target="#suggest"
+           hx-vals='{"ids": "{{ ids }}", "cond": "{{ cond }}", "mode": "{{ mode }}"}'>
+    <span id="suggest" class="suggest"></span>
+  </span>
+  {% endif %}
+</div>
+
+{% if not chips %}
+<p class="muted">Pick up to 6 titles — search above, tick them on <a href="/games">Games</a>, or use "Compare…" on a title page.</p>
+{% else %}
+<form class="filters" method="get">
+  <input type="hidden" name="ids" value="{{ ids }}">
+  <select name="cond" aria-label="condition" onchange="this.form.submit()">
+    {% for c in ["loose", "cib", "new"] %}<option {% if cond == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="mode" aria-label="scale" onchange="this.form.submit()">
+    {% for v, label in [("raw", "Price ($)"), ("rebased", "Rebased to 100")] + ([("index", "vs console index (100 = start)")] if has_index else []) %}
+    <option value="{{ v }}" {% if mode == v %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% if mode == "raw" %}<label class="muted"><input type="checkbox" id="log-scale"> Log scale</label>{% endif %}
+  <noscript><button>Apply</button></noscript>
+</form>
+{% if missing %}<p class="muted">No {{ cond }} history for: {% for c in missing %}{{ c.name }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+{% if series %}
+<div class="chart" data-chart="compare" data-src="compare-data" data-mode="{{ mode }}" role="img" aria-label="Price comparison"></div>
+<script type="application/json" id="compare-data">{{ series|tojson }}</script>
+{% if mode == "index" %}<p class="muted">Each line is the title's price divided by its console's median-title index, both set to 100 at the common start: above 100 means it beat its console.</p>
+{% elif mode == "rebased" %}<p class="muted">All titles set to 100 at the latest common start month.</p>{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}

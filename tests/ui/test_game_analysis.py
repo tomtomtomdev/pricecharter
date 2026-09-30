@@ -68,3 +68,8 @@ def test_browse_excess_shown_as_percent(analyzed_db):
     with TestClient(create_app(analyzed_db)) as c:
         r = c.get("/games", params={"sort": "excess"})
     assert f"+{math.exp(ex) - 1:.0%}" in r.text
+
+
+def test_pct_filter_no_negative_zero():
+    assert templates.env.filters["pct"](-0.004) == "0%"
+    assert templates.env.filters["pct"](0.126) == "+13%"

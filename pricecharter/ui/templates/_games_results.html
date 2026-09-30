@@ -1,12 +1,15 @@
 <p class="muted">{{ "{:,}".format(total) }} titles{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}</p>
 {% if rows %}
+<form action="/compare" method="get" class="compare-form">
+<div class="compare-bar"><button type="submit">Compare selected</button> <span class="muted">tick up to 6 titles</span></div>
 <div class="scroll"><table class="games">
-  <thead><tr><th>Title</th><th>Console</th><th>Genre</th><th>Released</th>
+  <thead><tr><th class="pick"><span class="sr-only">Compare</span></th><th>Title</th><th>Console</th><th>Genre</th><th>Released</th>
     {% for c in ["loose", "cib", "new"] %}<th class="num {% if c == cond %}hl{% endif %}">{{ c|upper if c == "cib" else c|capitalize }}</th>{% endfor %}
     {% if has_analysis %}<th class="num">3y excess ({{ cond }})</th>{% endif %}</tr></thead>
   <tbody>
   {% for r in rows %}
     <tr>
+      <td class="pick"><input type="checkbox" name="ids" value="{{ r.id }}" aria-label="compare {{ r.name }}"></td>
       <td><a href="/games/{{ r.id }}">{{ r.name }}</a></td>
       <td class="muted nowrap">{{ r.console }}</td><td>{{ r.genre or "" }}</td>
       <td class="muted">{{ (r.release_date or "")[:4] }}</td>
@@ -18,6 +21,8 @@
   {% endfor %}
   </tbody>
 </table></div>
+<input type="hidden" name="cond" value="{{ cond }}">
+</form>
 {% if pages > 1 %}
 <nav class="pager">
   {% if page > 1 %}<a href="/games?{{ query(page=page - 1) }}" hx-get="/games?{{ query(page=page - 1) }}" hx-target="#results" hx-push-url="true">← Prev</a>{% endif %}

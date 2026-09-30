@@ -18,7 +18,8 @@
         <div><dt>{{ label }}</dt><dd>{{ v }}</dd></div>
       {% endfor %}
     </dl>
-    <p><a href="https://www.pricecharting.com/game/{{ g.console }}/{{ g.slug }}" rel="noopener" target="_blank">View on PriceCharting ↗</a>
+    <p><a href="/compare?ids={{ g.id }}">Compare…</a> ·
+      <a href="https://www.pricecharting.com/game/{{ g.console }}/{{ g.slug }}" rel="noopener" target="_blank">View on PriceCharting ↗</a>
       <span class="muted">· details fetched {{ g.last_detail_at or "never" }} UTC</span></p>
   </div>
 </div>

@@ -18,7 +18,8 @@ from . import queries
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.filters["usd"] = lambda c: "" if c is None else f"${c / 100:,.2f}"
-templates.env.filters["pct"] = lambda x: "" if x is None or x != x else f"{x:+.0%}".replace("-", "−")
+templates.env.filters["pct"] = lambda x: (
+    "" if x is None or x != x else "0%" if round(x * 100) == 0 else f"{x:+.0%}".replace("-", "−"))
 # series_metrics stores log returns; show them as simple % changes
 templates.env.filters["logpct"] = lambda x: "" if x is None or x != x else templates.env.filters["pct"](math.exp(x) - 1)
 PER_PAGE = 50
@@ -138,6 +139,35 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             "has_model": bool(rows) and any(r["model_pred"] is not None for r in rows),
         })
 
+    @app.get("/compare")
+    def compare(
+        request: Request, conn: Conn, ids: Annotated[list[str], Query()] = [],  # noqa: B006 (FastAPI copies it)
+        cond: Literal["loose", "cib", "new"] = "loose", mode: Literal["raw", "rebased", "index"] = "raw",
+    ):
+        picked = _parse_ids(ids)
+        series = queries.compare_series(conn, picked, cond=cond, mode=mode)
+        for sr in series:  # color follows the title (its chip), even when another title has no data
+            sr["slot"] = picked.index(sr["id"]) + 1
+        names = {r["id"]: dict(r) for r in conn.execute(
+            f"SELECT id, name, console FROM games WHERE id IN ({','.join('?' * len(picked))})", picked)}
+        chips = [{**names[i], "without": ",".join(str(j) for j in picked if j != i)} for i in picked if i in names]
+        return templates.TemplateResponse(request, "compare.html", {
+            "series": series, "chips": chips, "ids": ",".join(map(str, picked)), "cond": cond, "mode": mode,
+            "has_index": queries.table_exists(conn, "console_index"), "full": len(picked) >= queries.MAX_COMPARE,
+            "missing": [c for c in chips if c["id"] not in {s["id"] for s in series}],
+        })
+
+    @app.get("/compare/suggest")
+    def compare_suggest(request: Request, conn: Conn, q: str = "", ids: str = "", cond: str = "loose",
+                        mode: str = "raw"):
+        picked = _parse_ids([ids])
+        rows, _ = queries.search_games(conn, q=q, sort="rank", per_page=8) if q.strip() else ([], 0)
+        return templates.TemplateResponse(request, "_compare_suggest.html", {
+            "rows": [r for r in rows if r["id"] not in picked],
+            "href": lambda gid: "/compare?" + urlencode({"ids": ",".join(map(str, [*picked, gid])),
+                                                         "cond": cond, "mode": mode}),
+        })
+
     @app.get("/report", response_class=HTMLResponse)
     def full_report(conn: Conn):
         res = _stored(app, conn)
@@ -148,6 +178,21 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
         return report.render_html(res)
 
     return app
+
+
+def _parse_ids(raw: list[str]) -> list[int]:
+    """`ids=1,2&ids=3` → [1, 2, 3], de-duplicated, capped at MAX_COMPARE."""
+    out: list[int] = []
+    for part in ",".join(raw).split(","):
+        if not part.strip():
+            continue
+        try:
+            gid = int(part)
+        except ValueError:
+            raise HTTPException(422, f"bad title id {part!r}") from None
+        if gid not in out:
+            out.append(gid)
+    return out[: queries.MAX_COMPARE]
 
 
 _stored_lock = threading.Lock()

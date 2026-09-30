@@ -107,7 +107,33 @@ function drawClusterLines(el, clusters) {
   Plotly.react(el, traces, layout, plotConfig);
 }
 
+// One line per compared title, categorical slots in the order the titles were picked.
+function initCompare(el) {
+  const data = readJSON(el.dataset.src), mode = el.dataset.mode;
+  const log = document.getElementById("log-scale");
+  const draw = () => {
+    const fmt = mode === "raw" ? "$%{y:,.2f}" : "%{y:.1f}";
+    const traces = data.map((s) => ({
+      type: "scatter", mode: "lines", name: s.name, x: s.x, y: s.y, line: { color: css(`--cat-${s.slot}`), width: 2 },
+      hovertemplate: `${fmt}<extra>%{fullData.name}</extra>`,
+    }));
+    const isLog = mode !== "raw" || (log && log.checked);  // rebased/index read as ratios, so always log
+    const layout = baseLayout({ annotations: data.length <= 4 ? endLabels(traces, el, isLog) : [], margin: { l: 56, r: 140, t: 8, b: 32 } });
+    const xs = traces.flatMap((t) => [t.x[0], t.x[t.x.length - 1]]).sort();
+    layout.xaxis = { ...layout.xaxis, range: [xs[0], xs[xs.length - 1]] };
+    layout.yaxis = mode === "raw"
+      ? { ...layout.yaxis, type: isLog ? "log" : "linear", tickprefix: "$", tickformat: isLog ? "" : ",.0f" }
+      : { ...layout.yaxis, type: "log", tickformat: ".0f" };
+    if (mode !== "raw") layout.shapes = [{ type: "line", xref: "paper", x0: 0, x1: 1, y0: 100, y1: 100,
+                                           line: { color: css("--muted"), width: 1, dash: "dot" } }];
+    Plotly.react(el, traces, layout, plotConfig);
+  };
+  if (log) log.addEventListener("change", draw);
+  return draw;
+}
+
 const CHARTS = {
+  compare: initCompare,
   factors: (el) => { const d = readJSON(el.dataset.src); return () => drawFactorBars(el, d); },
   clusters: (el) => { const d = readJSON(el.dataset.src); return () => drawClusterLines(el, d); },
   price: initPriceChart,
