@@ -1,0 +1,19 @@
+[project]
+name = "pricecharter"
+version = "0.1.0"
+description = "Crawl PriceCharting console lists and game detail pages into SQLite"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.47",
+    "beautifulsoup4>=4.12",
+]
+
+[project.scripts]
+pricecharter = "pricecharter.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
