@@ -29,7 +29,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **S0 Foundation** — CDP Chrome + Cloudflare wait, 1s throttle with 429 backoff, list JSON crawl,
       detail crawl (Loose/CIB/New monthly "All" history, current prices, recent sales), SQLite schema,
       `run.sh`, 16 NTSC-U consoles, parser tests.
-- [ ] **S1 CI** — ruff config + GitHub Actions running ruff and pytest.
+- [x] **S1 CI** — ruff config + GitHub Actions running ruff and pytest.
 - [ ] **S2 Regions** — 48-console registry (platform × NTSC-U/PAL/NTSC-J), `games.platform`/`games.region`
       with migration for existing DBs, CLI `--region`.
 - [ ] **S3 Crawl window** — `--until HH:MM` graceful stop (handles past-midnight), skip a console's list

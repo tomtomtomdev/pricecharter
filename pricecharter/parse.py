@@ -3,7 +3,7 @@
 import hashlib
 import json
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from bs4 import BeautifulSoup
 
@@ -70,7 +70,7 @@ def parse_chart_data(html: str) -> dict[str, list[tuple[str, int]]]:
         points = []
         for ts, cents in data.get(key) or []:
             if cents:
-                month = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).date().replace(day=1)
+                month = datetime.fromtimestamp(ts / 1000, tz=UTC).date().replace(day=1)
                 points.append((month.isoformat(), int(cents)))
         out[cond] = points
     return out

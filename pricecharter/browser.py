@@ -8,8 +8,8 @@ keeps the cf_clearance cookie between runs.
 import asyncio
 import subprocess
 import urllib.request
-from urllib.parse import urlsplit
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from playwright.async_api import Browser, Page, Playwright
 
