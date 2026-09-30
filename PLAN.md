@@ -63,8 +63,8 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 Local browser over the crawled DB + latest analysis tables. Every page works before `analyze` has ever run
 (analysis sections just say so). Tests use `fastapi.testclient` against the synthetic DB in `tests/analysis/synth.py`.
 
-- [ ] **U1 Skeleton** — `ui` dependency group (fastapi, uvicorn, httpx), `pricecharter/ui/app.py` `create_app(db_path)`,
-      read-only connection per request, base layout, `pricecharter serve --host 127.0.0.1 --port 8000`;
+- [x] **U1 Skeleton** — `ui` dependency group (fastapi, uvicorn, httpx2), `pricecharter/ui/app.py` `create_app(db_path)`,
+      read-only connection per request, base layout, `pricecharter serve --host 127.0.0.1 --http-port 8000` (`--port` is Chrome's CDP port);
       test: app boots on synth DB and a write through its connection fails.
 - [ ] **U2 Dashboard `/`** — per-console coverage (listed, detail-fetched, stale > `--stale-days`, with history),
       recent `crawl_runs` (ok/failed/error), last `analysis_runs` row.

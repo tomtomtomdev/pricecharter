@@ -15,7 +15,7 @@ from .window import deadline_from
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="pricecharter")
-    ap.add_argument("stage", choices=["list", "details", "all", "analyze"])
+    ap.add_argument("stage", choices=["list", "details", "all", "analyze", "serve"])
     ap.add_argument("-c", "--console", nargs="+", metavar="NAME",
                     help=f"platforms ({' '.join(platforms())}) or exact slugs like pal-nes; default all")
     ap.add_argument("-r", "--region", nargs="+", choices=REGIONS, default=list(REGIONS),
@@ -38,7 +38,19 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("--report", type=Path, help="HTML report path (default reports/analysis-<asof>.html)")
     an.add_argument("--no-report", action="store_true", help="skip the HTML report")
     an.add_argument("--no-model", action="store_true", help="skip the out-of-sample model check")
+    sv = ap.add_argument_group("serve")
+    sv.add_argument("--host", default="127.0.0.1", help="web UI bind address (default 127.0.0.1)")
+    sv.add_argument("--http-port", type=int, default=8000, help="web UI port (default 8000)")
     return ap
+
+
+def run_serve(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    from .ui.app import create_app
+
+    print(f"pricecharter UI on http://{args.host}:{args.http_port} (db {args.db.resolve()})")
+    uvicorn.run(create_app(args.db), host=args.host, port=args.http_port, log_level="warning")
 
 
 def run_analyze(args: argparse.Namespace) -> None:
@@ -120,6 +132,9 @@ def main() -> None:
     args = parse_args()
     if args.stage == "analyze":
         run_analyze(args)
+        return
+    if args.stage == "serve":
+        run_serve(args)
         return
     try:
         asyncio.run(run(args))
