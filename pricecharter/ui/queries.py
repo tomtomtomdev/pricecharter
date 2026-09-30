@@ -108,3 +108,29 @@ def search_games(
     ).fetchall()
     by_id = {r["id"]: dict(r) for r in rows}
     return [by_id[i] for i in ids], total
+
+
+def game(conn: sqlite3.Connection, game_id: int) -> dict | None:
+    row = conn.execute(
+        f"""SELECT g.*, {current_price_sql('loose')} AS loose_cents, {current_price_sql('cib')} AS cib_cents,
+                   {current_price_sql('new')} AS new_cents
+            FROM games g WHERE g.id = ?""",
+        (game_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def history(conn: sqlite3.Connection, game_id: int) -> dict[str, list[tuple[str, int]]]:
+    out: dict[str, list[tuple[str, int]]] = {}
+    for r in conn.execute(
+        "SELECT condition, month, price_cents FROM price_history WHERE game_id = ? ORDER BY condition, month",
+        (game_id,),
+    ):
+        out.setdefault(r["condition"], []).append((r["month"], r["price_cents"]))
+    return {c: out[c] for c in CONDITIONS if c in out}
+
+
+def sales(conn: sqlite3.Connection, game_id: int, limit: int = 60) -> list[dict]:
+    return [dict(r) for r in conn.execute(
+        "SELECT * FROM sales WHERE game_id = ? ORDER BY sale_date DESC, condition LIMIT ?", (game_id, limit),
+    )]

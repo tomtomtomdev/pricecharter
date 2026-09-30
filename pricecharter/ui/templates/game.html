@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %} · {{ g.name }}{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block content %}
+<p class="muted crumbs"><a href="/games?console={{ g.console }}">{{ g.console }}</a>
+  {% if g.region %}· {{ g.region }}{% endif %}</p>
+<div class="game-head">
+  {% if g.image_url %}<img class="cover" src="{{ g.image_url }}" alt="" loading="lazy">{% endif %}
+  <div>
+    <h1>{{ g.name }}</h1>
+    <dl class="meta">
+      {% for label, v in [("Genre", g.genre), ("Released", g.release_date), ("Publisher", g.publisher),
+                          ("Developer", g.developer), ("ESRB", g.esrb), ("Players", g.player_count),
+                          ("UPC", g.upc), ("List rank", g.list_rank)] if v %}
+        <div><dt>{{ label }}</dt><dd>{{ v }}</dd></div>
+      {% endfor %}
+    </dl>
+    <p><a href="https://www.pricecharting.com/game/{{ g.console }}/{{ g.slug }}" rel="noopener" target="_blank">View on PriceCharting ↗</a>
+      <span class="muted">· details fetched {{ g.last_detail_at or "never" }} UTC</span></p>
+  </div>
+</div>
+
+<div class="tiles">
+  {% for c, label in [("loose", "Loose"), ("cib", "CIB"), ("new", "New")] %}
+  <div class="tile"><div class="label"><span class="key key-{{ c }}"></span>{{ label }}</div>
+    <div class="value">{{ g[c ~ "_cents"]|usd or "—" }}</div></div>
+  {% endfor %}
+</div>
+
+<h2>Price history</h2>
+{% if chart %}
+<div class="chart-controls">
+  <label><input type="checkbox" id="log-scale"> Log scale</label>
+</div>
+<div id="price-chart" class="chart" role="img" aria-label="Monthly price history for {{ g.name }}"></div>
+<script type="application/json" id="price-data">{{ chart|tojson }}</script>
+<details class="table-view">
+  <summary>Monthly prices (table)</summary>
+  <div class="scroll"><table>
+    <thead><tr><th>Month</th>{% for s in chart %}<th class="num">{{ s.cond|upper if s.cond == "cib" else s.cond|capitalize }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for r in table %}<tr><td>{{ r.month[:7] }}</td>{% for s in chart %}<td class="num">{{ r.get(s.cond)|usd }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+</details>
+{% else %}
+<p class="muted">No price history yet — the details crawl hasn't fetched this title.</p>
+{% endif %}
+
+<h2>Recent sales</h2>
+{% if sales %}
+<div class="scroll"><table>
+  <thead><tr><th>Date</th><th>Condition</th><th class="num">Price</th><th>Title</th><th>Source</th></tr></thead>
+  <tbody>
+  {% for s in sales %}
+    <tr><td class="nowrap">{{ s.sale_date }}</td><td>{{ s.condition }}</td><td class="num">{{ s.price_cents|usd }}</td>
+      <td>{% if s.url %}<a href="{{ s.url }}" rel="noopener" target="_blank">{{ s.title or "listing" }}</a>{% else %}{{ s.title or "" }}{% endif %}</td>
+      <td class="muted">{{ s.source or "" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p class="muted">No recorded sales.</p>
+{% endif %}
+{% endblock %}

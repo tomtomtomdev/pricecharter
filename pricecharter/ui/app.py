@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlencode
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -78,4 +78,27 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             return templates.TemplateResponse(request, "_games_results.html", ctx)
         return templates.TemplateResponse(request, "games.html", ctx | {"facets": queries.facets(conn)})
 
+    @app.get("/games/{game_id}")
+    def game_page(request: Request, conn: Conn, game_id: int):
+        g = queries.game(conn, game_id)
+        if g is None:
+            raise HTTPException(404, f"no game {game_id}")
+        hist = queries.history(conn, game_id)
+        return templates.TemplateResponse(request, "game.html", {
+            "g": g, "sales": queries.sales(conn, game_id),
+            # a list, not a dict: tojson sorts keys and the series order is loose, cib, new
+            "chart": [{"cond": c, "x": [m for m, _ in p], "y": [round(v / 100, 2) for _, v in p]}
+                      for c, p in hist.items()],
+            "table": _history_table(hist),
+        })
+
     return app
+
+
+def _history_table(hist: dict[str, list[tuple[str, int]]]) -> list[dict]:
+    """Newest-first month rows with one column per condition (the chart's table view)."""
+    rows: dict[str, dict] = {}
+    for cond, pts in hist.items():
+        for month, cents in pts:
+            rows.setdefault(month, {"month": month})[cond] = cents
+    return [rows[m] for m in sorted(rows, reverse=True)]
