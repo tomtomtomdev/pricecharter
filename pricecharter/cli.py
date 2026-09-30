@@ -15,7 +15,7 @@ from .window import deadline_from
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="pricecharter")
-    ap.add_argument("stage", choices=["list", "details", "all"])
+    ap.add_argument("stage", choices=["list", "details", "all", "analyze"])
     ap.add_argument("-c", "--console", nargs="+", metavar="NAME",
                     help=f"platforms ({' '.join(platforms())}) or exact slugs like pal-nes; default all")
     ap.add_argument("-r", "--region", nargs="+", choices=REGIONS, default=list(REGIONS),
@@ -30,7 +30,35 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--release-date", default=today(), help="list filter release-date (default today)")
     ap.add_argument("--port", type=int, default=9222, help="Chrome remote-debugging port")
     ap.add_argument("--profile", type=Path, default=Path(".chrome-profile"))
+    an = ap.add_argument_group("analyze")
+    an.add_argument("--window", type=int, default=36, choices=[12, 36, 60], help="months for excess return")
+    an.add_argument("--top", type=float, default=0.2, help="share of titles labeled rising per console")
+    an.add_argument("--condition", nargs="+", choices=["loose", "cib", "new"], help="default all")
+    an.add_argument("--asof", help="analysis end month YYYY-MM-01 (default latest)")
     return ap
+
+
+def run_analyze(args: argparse.Namespace) -> None:
+    from .analysis.run import analyze, persist  # pandas stack only needed here
+
+    conn = db.connect(args.db)
+    try:
+        res = analyze(conn, args.consoles if args.console else None, args.condition,
+                      window=args.window, top=args.top, asof=args.asof)
+        run_id = persist(conn, res)
+    finally:
+        conn.close()
+    p = res.params
+    print(f"analysis #{run_id}: {p['n_series']} series, {p['n_labeled']} labeled, asof {p['asof']}, "
+          f"window {p['window']}m, top {p['top']:.0%}")
+    for cond, grp in res.factor_lift.groupby("condition"):
+        print(f"\n[{cond}] top factors (lift, 95% lower bound, n)")
+        for r in grp[grp["lift_lo"] > 1].head(10).itertuples():
+            print(f"  {r.factor + '=' + r.value:<36} {r.lift:4.2f}x  >={r.lift_lo:4.2f}x  n={r.n}")
+    for cond, grp in res.patterns.groupby("condition"):
+        print(f"\n[{cond}] top patterns")
+        for r in grp.head(10).itertuples():
+            print(f"  {r.items:<60} {r.lift:4.2f}x  >={r.lift_lo:4.2f}x  n={r.n}")
 
 
 async def run(args: argparse.Namespace) -> None:
@@ -72,8 +100,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main() -> None:
+    args = parse_args()
+    if args.stage == "analyze":
+        run_analyze(args)
+        return
     try:
-        asyncio.run(run(parse_args()))
+        asyncio.run(run(args))
     except KeyboardInterrupt:
         print("\ninterrupted — progress is committed per page, re-run to resume")
 

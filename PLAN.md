@@ -49,7 +49,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
       franchise/keyword tokens, price bucket, CIB/Loose & New/CIB ratios, sales liquidity.
 - [x] **A6 Factor lift** — rise rate vs baseline, lift, Wilson CI, min support → `factor_lift`.
 - [x] **A7 Patterns** — frequent itemsets (≤3 factors) over discretized factors ⇒ rising rules (support, confidence, lift) → `patterns`.
-- [ ] **A8 CLI + persistence** — `pricecharter analyze` writes tables + `analysis_runs`.
+- [x] **A8 CLI + persistence** — `pricecharter analyze` writes tables + `analysis_runs`.
 - [ ] **A9 Report** — HTML: console indices, top factors, top patterns with example titles.
 - [ ] **A10 Model** — time-split HistGB on excess return, baseline comparison, permutation importance → `model_importance`.
 - [ ] **A11 Curve shapes** — KMeans on normalized curves, profile clusters by factors → `curve_clusters`.

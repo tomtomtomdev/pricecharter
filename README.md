@@ -61,6 +61,17 @@ job runs on wake, but only on Saturday or Sunday. To wake the Mac for it:
 | `sales` | recent sold listings: condition, sale id, date, title, price, source (ebay/goldin/…), url |
 | `crawl_runs` | per stage/console run log |
 
+## Analysis
+
+```sh
+./run.sh analyze                          # all crawled consoles/conditions
+./run.sh analyze -c nes snes --condition cib --window 60 --top 0.1
+```
+
+Each title's monthly price is compared to its console's median index (so the 2020–21 boom
+doesn't count as a pattern). "Rising" = top 20% of 36-month excess return per console × condition.
+Writes `console_index`, `series_metrics`, `factor_lift`, `patterns` and logs `analysis_runs`.
+
 ## Tests
 
 ```sh

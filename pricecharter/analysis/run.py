@@ -1,0 +1,80 @@
+"""End-to-end analysis: load -> index -> metrics -> label -> factors -> lift -> patterns, then persist."""
+
+import json
+import sqlite3
+from dataclasses import dataclass, field
+
+import pandas as pd
+
+from .factors import CATEGORICAL, build_factors
+from .index import console_index
+from .label import label_rising
+from .lift import factor_lift
+from .loader import load_games, load_history, load_sales
+from .metrics import series_metrics
+from .patterns import mine_patterns
+
+TABLES = ["console_index", "series_metrics", "factor_lift", "patterns"]
+PATTERN_FACTORS = [c for c in CATEGORICAL if c not in ("developer",)]
+
+
+@dataclass
+class AnalysisResult:
+    params: dict
+    console_index: pd.DataFrame
+    series_metrics: pd.DataFrame
+    factors: pd.DataFrame
+    factor_lift: pd.DataFrame
+    patterns: pd.DataFrame
+    games: pd.DataFrame = field(repr=False)
+    history: pd.DataFrame = field(repr=False)
+
+
+def analyze(
+    conn: sqlite3.Connection, consoles: list[str] | None = None, conditions: list[str] | None = None,
+    window: int = 36, top: float = 0.2, asof: str | None = None, min_support: int = 30,
+) -> AnalysisResult:
+    history = load_history(conn, consoles, conditions)
+    if history.empty:
+        raise ValueError("no price history for the selected consoles/conditions; run the details crawl first")
+    games = load_games(conn)
+    idx = console_index(history)
+    metrics = label_rising(series_metrics(history, idx, asof=asof), window=window, top=top)
+    factors = build_factors(metrics, games, history, load_sales(conn), window=window)
+    support = max(5, min(min_support, int(factors["rising"].notna().sum() * 0.02)))
+    lift = factor_lift(factors, CATEGORICAL, min_support=support)
+    patterns = mine_patterns(factors, PATTERN_FACTORS, min_count=support)
+    params = {
+        "asof": metrics["asof"].iloc[0].date().isoformat(), "window": window, "top": top,
+        "consoles": json.dumps(sorted(history["console"].unique().tolist())),
+        "conditions": json.dumps(sorted(history["condition"].unique().tolist())),
+        "min_support": support, "n_series": len(metrics), "n_labeled": int(metrics["rising"].notna().sum()),
+        "base_rate": float(metrics["rising"].mean()) if metrics["rising"].notna().any() else None,
+    }
+    return AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history)
+
+
+def _for_sql(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    for col in out.columns:
+        if pd.api.types.is_datetime64_any_dtype(out[col]):
+            out[col] = out[col].dt.strftime("%Y-%m-%d")
+    return out
+
+
+def persist(conn: sqlite3.Connection, res: AnalysisResult) -> int:
+    for name in TABLES:
+        _for_sql(getattr(res, name)).to_sql(name, conn, if_exists="replace", index=False)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS analysis_runs (
+            id INTEGER PRIMARY KEY, ran_at TEXT NOT NULL DEFAULT (datetime('now')), asof TEXT, window INTEGER,
+            top REAL, consoles TEXT, conditions TEXT, min_support INTEGER, n_series INTEGER, n_labeled INTEGER,
+            base_rate REAL)"""
+    )
+    cols = list(res.params)
+    cur = conn.execute(
+        f"INSERT INTO analysis_runs ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
+        [res.params[c] for c in cols],
+    )
+    conn.commit()
+    return cur.lastrowid
