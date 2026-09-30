@@ -51,7 +51,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **A7 Patterns** — frequent itemsets (≤3 factors) over discretized factors ⇒ rising rules (support, confidence, lift) → `patterns`.
 - [x] **A8 CLI + persistence** — `pricecharter analyze` writes tables + `analysis_runs`.
 - [x] **A9 Report** — HTML: console indices, top factors, top patterns with example titles.
-- [ ] **A10 Model** — time-split HistGB on excess return, baseline comparison, permutation importance → `model_importance`.
+- [x] **A10 Model** — time-split HistGB on excess return, baseline comparison, permutation importance → `model_importance`.
 - [ ] **A11 Curve shapes** — KMeans on normalized curves, profile clusters by factors → `curve_clusters`.
 - [ ] **A12 Pre-breakout signals** — what changed 6–12 months before the biggest jumps.
 - [ ] **A13 Watchlist** — current titles best matching rising patterns, in the report.

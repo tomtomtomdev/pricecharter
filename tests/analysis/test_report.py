@@ -50,3 +50,8 @@ def test_cli_report_flags():
 
     assert parse_args(["analyze"]).report is None and not parse_args(["analyze"]).no_report
     assert parse_args(["analyze", "--no-report"]).no_report
+
+
+def test_model_section(result, tmp_path):
+    html = render_report(result, tmp_path / "r.html").read_text()
+    assert "Model check" in html

@@ -76,7 +76,8 @@ def context(res: AnalysisResult) -> dict:
         "patterns": patterns,
         "chart_json": _json_for_script({"index": _index_traces(res.console_index),
                                         "factors": _factor_bars(res.factor_lift)}),
-        "extra": getattr(res, "extra", {}),
+        "model": res.model_summary,
+        "importance": res.model_importance.head(10).to_dict("records") if not res.model_importance.empty else [],
     }
 
 

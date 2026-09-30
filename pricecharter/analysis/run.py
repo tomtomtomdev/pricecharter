@@ -12,6 +12,7 @@ from .label import label_rising
 from .lift import factor_lift
 from .loader import load_games, load_history, load_sales
 from .metrics import series_metrics
+from .model import build_samples, fit_model
 from .patterns import mine_patterns
 
 TABLES = ["console_index", "series_metrics", "factor_lift", "patterns"]
@@ -28,11 +29,13 @@ class AnalysisResult:
     patterns: pd.DataFrame
     games: pd.DataFrame = field(repr=False)
     history: pd.DataFrame = field(repr=False)
+    model_summary: dict = field(default_factory=dict)
+    model_importance: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def analyze(
     conn: sqlite3.Connection, consoles: list[str] | None = None, conditions: list[str] | None = None,
-    window: int = 36, top: float = 0.2, asof: str | None = None, min_support: int = 30,
+    window: int = 36, top: float = 0.2, asof: str | None = None, min_support: int = 30, model: bool = True,
 ) -> AnalysisResult:
     history = load_history(conn, consoles, conditions)
     if history.empty:
@@ -51,7 +54,11 @@ def analyze(
         "min_support": support, "n_series": len(metrics), "n_labeled": int(metrics["rising"].notna().sum()),
         "base_rate": float(metrics["rising"].mean()) if metrics["rising"].notna().any() else None,
     }
-    return AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history)
+    res = AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history)
+    if model:
+        fitted = fit_model(build_samples(history, idx, games, window=window), window=window)
+        res.model_summary, res.model_importance = fitted.summary, fitted.importance
+    return res
 
 
 def _for_sql(df: pd.DataFrame) -> pd.DataFrame:
@@ -65,6 +72,10 @@ def _for_sql(df: pd.DataFrame) -> pd.DataFrame:
 def persist(conn: sqlite3.Connection, res: AnalysisResult) -> int:
     for name in TABLES:
         _for_sql(getattr(res, name)).to_sql(name, conn, if_exists="replace", index=False)
+    if res.model_summary:
+        res.model_importance.to_sql("model_importance", conn, if_exists="replace", index=False)
+        pd.DataFrame([{k: (str(v) if isinstance(v, bool) else v) for k, v in res.model_summary.items()}]).to_sql(
+            "model_summary", conn, if_exists="replace", index=False)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS analysis_runs (
             id INTEGER PRIMARY KEY, ran_at TEXT NOT NULL DEFAULT (datetime('now')), asof TEXT, window INTEGER,

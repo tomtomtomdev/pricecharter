@@ -18,7 +18,7 @@ def _count(conn, table):
 
 
 def test_analyze_and_persist(db):
-    res = analyze(db)
+    res = analyze(db, model=False)
     assert {"console_index", "series_metrics", "factors", "factor_lift", "patterns"} <= set(vars(res))
     persist(db, res)
     for t in TABLES:
@@ -29,16 +29,16 @@ def test_analyze_and_persist(db):
 
 
 def test_rerun_replaces_results_but_logs_runs(db):
-    persist(db, analyze(db))
+    persist(db, analyze(db, model=False))
     n = _count(db, "series_metrics")
-    persist(db, analyze(db, window=12))
+    persist(db, analyze(db, window=12, model=False))
     assert _count(db, "series_metrics") == n
     assert _count(db, "analysis_runs") == 2
     assert db.execute("SELECT window FROM analysis_runs ORDER BY id DESC").fetchone()[0] == 12
 
 
 def test_filters(db):
-    res = analyze(db, consoles=["pal-nes"], conditions=["cib"])
+    res = analyze(db, consoles=["pal-nes"], conditions=["cib"], model=False)
     assert set(res.series_metrics["console"]) == {"pal-nes"}
     assert set(res.series_metrics["condition"]) == {"cib"}
 
@@ -59,7 +59,19 @@ def test_cli_analyze_args():
 
 
 def test_dates_stored_as_iso(db):
-    persist(db, analyze(db))
+    persist(db, analyze(db, model=False))
     v = db.execute("SELECT month FROM console_index LIMIT 1").fetchone()[0]
     assert isinstance(v, str) and len(v) == 10
     assert isinstance(db, sqlite3.Connection)
+
+
+def test_model_persisted(db):
+    res = analyze(db)
+    persist(db, res)
+    assert res.model_summary["status"] in ("ok", "insufficient data")
+    assert _count(db, "model_summary") == 1
+
+
+def test_model_can_be_skipped(db):
+    res = analyze(db, model=False)
+    assert res.model_summary == {}

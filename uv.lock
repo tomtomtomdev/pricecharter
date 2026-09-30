@@ -528,6 +528,7 @@ analysis = [
     { name = "scikit-learn" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "threadpoolctl" },
 ]
 dev = [
     { name = "pytest" },
@@ -547,6 +548,7 @@ analysis = [
     { name = "pandas", specifier = ">=2.2" },
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", specifier = ">=1.13" },
+    { name = "threadpoolctl", specifier = ">=3.5" },
 ]
 dev = [
     { name = "pytest", specifier = ">=8" },

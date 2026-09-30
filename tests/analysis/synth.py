@@ -32,7 +32,7 @@ def planted_boost(genre: str, publisher: str, year: int, name: str) -> float:
     )
 
 
-def build(path: Path, games_per_console: int = 120, seed: int = 7) -> sqlite3.Connection:
+def build(path: Path, games_per_console: int = 120, seed: int = 7, signal: bool = True) -> sqlite3.Connection:
     rng = np.random.default_rng(seed)
     conn = db.connect(path)
     market = np.cumsum(rng.normal(0.003, 0.01, len(MONTHS)))
@@ -55,7 +55,7 @@ def build(path: Path, games_per_console: int = 120, seed: int = 7) -> sqlite3.Co
                 " WHERE id = ?",
                 (genre, publisher, f"{year}-{rng.integers(1, 13):02d}-01", gid),
             )
-            boost = planted_boost(genre, publisher, year, name)
+            boost = planted_boost(genre, publisher, year, name) if signal else 0.0
             start = int(rng.integers(0, 24))  # series begin at different months
             base = rng.normal(np.log(2000), 0.8)
             rows = []

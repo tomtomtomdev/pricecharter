@@ -37,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("--asof", help="analysis end month YYYY-MM-01 (default latest)")
     an.add_argument("--report", type=Path, help="HTML report path (default reports/analysis-<asof>.html)")
     an.add_argument("--no-report", action="store_true", help="skip the HTML report")
+    an.add_argument("--no-model", action="store_true", help="skip the out-of-sample model check")
     return ap
 
 
@@ -47,7 +48,7 @@ def run_analyze(args: argparse.Namespace) -> None:
     conn = db.connect(args.db)
     try:
         res = analyze(conn, args.consoles if args.console else None, args.condition,
-                      window=args.window, top=args.top, asof=args.asof)
+                      window=args.window, top=args.top, asof=args.asof, model=not args.no_model)
         run_id = persist(conn, res)
     finally:
         conn.close()
@@ -62,6 +63,12 @@ def run_analyze(args: argparse.Namespace) -> None:
         print(f"\n[{cond}] top patterns")
         for r in grp.head(10).itertuples():
             print(f"  {r.items:<60} {r.lift:4.2f}x  >={r.lift_lo:4.2f}x  n={r.n}")
+    m = res.model_summary
+    if m.get("status") == "ok":
+        verdict = "beats baseline" if m["signal"] else "no out-of-sample signal"
+        print(f"\nmodel: spearman {m['spearman']:.2f}, R2 {m['r2']:.2f} vs {m['r2_baseline']:.2f} -> {verdict}")
+    elif m:
+        print(f"\nmodel: {m['status']}")
     if not args.no_report:
         path = render_report(res, args.report or Path("reports") / f"analysis-{p['asof']}.html")
         print(f"\nreport: {path.resolve()}")

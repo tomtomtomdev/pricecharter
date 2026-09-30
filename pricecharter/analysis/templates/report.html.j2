@@ -107,7 +107,26 @@
   </div>
   {% endfor %}
 
-  {% block extra_sections %}{% endblock %}
+  {% if model %}
+  <h2>Model check</h2>
+  {% if model.status == "ok" %}
+  <p class="sub">A gradient-boosting model trained on {{ model.train_t0 }} start years predicts the next {{ p.window }} months of excess return for {{ model.test_t0 }}, using only what was known at the start.
+    {% if model.signal %}<b>It beats the baseline</b>, so the factors carry real out-of-sample signal.{% else %}<b>It does not beat the baseline</b>, so treat the factor tables as descriptive, not predictive.{% endif %}</p>
+  <div class="stats">
+    <div class="stat"><b>{{ "%.2f" | format(model.spearman) }}</b><span>rank correlation (test)</span></div>
+    <div class="stat"><b>{{ "%.2f" | format(model.r2) }}</b><span>R² vs baseline {{ "%.2f" | format(model.r2_baseline) }}</span></div>
+    <div class="stat"><b>{{ ("%.0f%%" | format(model.top_quintile_precision * 100)) if model.top_quintile_precision is not none else "–" }}</b><span>predicted top 20% that were (chance 20%)</span></div>
+    <div class="stat"><b>{{ "{:,}".format(model.n_train) }} / {{ "{:,}".format(model.n_test) }}</b><span>train / test samples</span></div>
+  </div>
+  <h3>What the model relies on</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Feature</th><th class="num">Drop in R² when shuffled</th></tr></thead>
+    <tbody>{% for f in importance %}<tr><td><code>{{ f.feature }}</code></td><td class="num">{{ "%.3f" | format(f.importance) }} ± {{ "%.3f" | format(f.importance_std) }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <p class="sub">Not enough history for an out-of-sample test yet ({{ model.status }}).</p>
+  {% endif %}
+  {% endif %}
 
   <h2>Caveats</h2>
   <ul class="caveats">
