@@ -174,3 +174,34 @@ def _rebased_index(conn: sqlite3.Connection, game_id: int) -> list[dict]:
         out.append({"cond": cond, "x": [r["month"] for r in rows],
                     "y": [round(first_cents / 100 * math.exp(r["level"] - base), 2) for r in rows]})
     return out
+
+
+def console_index_series(conn: sqlite3.Connection, console: str) -> list[dict]:
+    """Median-title index per condition as % change since the index starts."""
+    if not table_exists(conn, "console_index"):
+        return []
+    out = []
+    for cond in CONDITIONS:
+        rows = conn.execute(
+            "SELECT month, level FROM console_index WHERE console = ? AND condition = ? AND level IS NOT NULL"
+            " ORDER BY month", (console, cond),
+        ).fetchall()
+        if rows:
+            out.append({"cond": cond, "x": [r["month"] for r in rows],
+                        "y": [round((math.exp(r["level"]) - 1) * 100, 1) for r in rows]})
+    return out
+
+
+def movers(conn: sqlite3.Connection, console: str, cond: str, n: int = 15, rising: bool = True) -> list[dict]:
+    """Titles with the largest (or smallest) 3-year excess return vs their console index."""
+    if not table_exists(conn, "series_metrics"):
+        return []
+    assert cond in CONDITIONS
+    return [dict(r) for r in conn.execute(
+        f"""SELECT g.id, g.name, g.console, g.genre, sm.excess_36m, sm.ret_36m, sm.rising,
+                   {current_price_sql(cond)} AS price_cents
+            FROM series_metrics sm JOIN games g ON g.id = sm.game_id
+            WHERE sm.console = ? AND sm.condition = ? AND sm.excess_36m IS NOT NULL
+            ORDER BY sm.excess_36m {'DESC' if rising else 'ASC'} LIMIT ?""",
+        (console, cond, n),
+    )]

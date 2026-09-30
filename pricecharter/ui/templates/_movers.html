@@ -1,0 +1,11 @@
+<div class="scroll"><table>
+  <thead><tr><th>Title</th><th>Genre</th><th class="num">{{ cond|upper if cond == "cib" else cond|capitalize }} price</th>
+    <th class="num">3y excess</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr><td><a href="/games/{{ r.id }}">{{ r.name }}</a>{% if r.rising == 1 %} <span class="badge up" title="labeled rising">▲</span>{% endif %}</td>
+      <td class="muted">{{ r.genre or "" }}</td><td class="num">{{ r.price_cents|usd }}</td>
+      <td class="num {{ 'up' if r.excess_36m > 0 else 'bad' }}">{{ r.excess_36m|logpct }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>

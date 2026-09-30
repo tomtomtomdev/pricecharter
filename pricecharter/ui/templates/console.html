@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %} · {{ console }}{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block content %}
+<p class="muted crumbs"><a href="/">Dashboard</a> · {{ cov.platform or "" }} {% if cov.region %}· {{ cov.region }}{% endif %}</p>
+<h1>{{ console }}</h1>
+<p><a href="/games?console={{ console }}">Browse {{ cov.listed }} titles →</a></p>
+<div class="tiles">
+  <div class="tile"><div class="label">Titles listed</div><div class="value">{{ "{:,}".format(cov.listed) }}</div></div>
+  <div class="tile"><div class="label">Details fetched</div><div class="value">{{ "{:,}".format(cov.fetched) }}</div>
+    <div class="muted">{{ cov.never }} never · {{ cov.stale }} older than {{ stale_days|int }}d</div></div>
+  <div class="tile"><div class="label">With price history</div><div class="value">{{ "{:,}".format(cov.with_history) }}</div></div>
+</div>
+
+{% if not has_analysis %}
+<p class="muted">No analysis yet — run <code>./run.sh analyze</code> for the console index and biggest movers.</p>
+{% else %}
+{% if index %}
+<h2>Console price index</h2>
+<p class="muted">Median title's cumulative price move, % since the index starts.</p>
+<div class="chart" data-chart="index" data-src="index-series" role="img" aria-label="{{ console }} price index by condition"></div>
+<script type="application/json" id="index-series">{{ index|tojson }}</script>
+{% endif %}
+
+<form class="filters" method="get">
+  <label class="muted">Movers by condition
+  <select name="cond" onchange="this.form.submit()">
+    {% for c in ["loose", "cib", "new"] %}<option {% if cond == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select></label>
+</form>
+<div class="two-col">
+  <section><h2>Biggest risers</h2>{% with rows = risers %}{% include "_movers.html" %}{% endwith %}</section>
+  <section><h2>Biggest fallers</h2>{% with rows = fallers %}{% include "_movers.html" %}{% endwith %}</section>
+</div>
+{% endif %}
+{% endblock %}

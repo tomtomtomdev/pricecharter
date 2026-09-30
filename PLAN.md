@@ -74,7 +74,7 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
       recent sales table, link back to PriceCharting; 404 for unknown id.
 - [x] **U5 Analysis on game page** — console index overlay, `series_metrics` (excess returns, drawdown, biggest jump),
       rising label, curve cluster, watchlist membership; hidden when tables are missing.
-- [ ] **U6 Console page `/consoles/{slug}`** — index chart per condition, top risers/fallers by excess return, coverage.
+- [x] **U6 Console page `/consoles/{slug}`** — index chart per condition, top risers/fallers by excess return, coverage.
 - [ ] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;
       extract the chart/table builders from `analysis/report.py` into a shared module (report output unchanged).
 - [ ] **U8 Watchlist `/watchlist`** — sortable table linking to game pages, filter by console/condition.

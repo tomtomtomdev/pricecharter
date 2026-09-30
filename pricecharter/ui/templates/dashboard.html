@@ -24,7 +24,7 @@
   <tbody>
   {% for r in coverage %}
     <tr>
-      <td>{{ r.console }}</td><td>{{ r.platform or "" }}</td><td>{{ r.region or "" }}</td>
+      <td><a href="/consoles/{{ r.console }}">{{ r.console }}</a></td><td>{{ r.platform or "" }}</td><td>{{ r.region or "" }}</td>
       <td class="num">{{ r.listed }}</td>
       <td class="num">{{ r.fetched }} <span class="muted">({{ (100 * r.fetched / r.listed)|round|int }}%)</span></td>
       <td class="num">{{ r.never }}</td><td class="num">{{ r.stale }}</td><td class="num">{{ r.with_history }}</td>

@@ -71,3 +71,5 @@ td.nowrap { white-space: nowrap; }
 .callout li { margin: 2px 0; }
 .chart-controls select { font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface); color: var(--text); }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 0 32px; }
+.filters label { display: flex; gap: 8px; align-items: center; }

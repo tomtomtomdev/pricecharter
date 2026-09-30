@@ -5,7 +5,7 @@
 <script src="/static/charts.js" defer></script>
 {% endblock %}
 {% block content %}
-<p class="muted crumbs"><a href="/games?console={{ g.console }}">{{ g.console }}</a>
+<p class="muted crumbs"><a href="/consoles/{{ g.console }}">{{ g.console }}</a>
   {% if g.region %}· {{ g.region }}{% endif %}</p>
 <div class="game-head">
   {% if g.image_url %}<img class="cover" src="{{ g.image_url }}" alt="" loading="lazy">{% endif %}
@@ -43,7 +43,7 @@
   {% endif %}
 </div>
 {% if analysis and analysis.index %}<script type="application/json" id="index-data">{{ analysis.index|tojson }}</script>{% endif %}
-<div id="price-chart" class="chart" role="img" aria-label="Monthly price history for {{ g.name }}"></div>
+<div id="price-chart" class="chart" data-chart="price" data-src="price-data" role="img" aria-label="Monthly price history for {{ g.name }}"></div>
 <script type="application/json" id="price-data">{{ chart|tojson }}</script>
 <details class="table-view">
   <summary>Monthly prices (table)</summary>

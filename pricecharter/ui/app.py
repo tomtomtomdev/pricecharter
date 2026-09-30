@@ -95,6 +95,19 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             "table": _history_table(hist), "analysis": queries.game_analysis(conn, game_id),
         })
 
+    @app.get("/consoles/{console}")
+    def console_page(request: Request, conn: Conn, console: str, cond: Literal["loose", "cib", "new"] = "loose"):
+        cov = next((r for r in queries.coverage(conn, stale_days) if r["console"] == console), None)
+        if cov is None:
+            raise HTTPException(404, f"no titles crawled for console {console}")
+        return templates.TemplateResponse(request, "console.html", {
+            "console": console, "cov": cov, "cond": cond, "stale_days": stale_days,
+            "index": queries.console_index_series(conn, console),
+            "has_analysis": queries.table_exists(conn, "series_metrics"),
+            "risers": queries.movers(conn, console, cond),
+            "fallers": queries.movers(conn, console, cond, rising=False),
+        })
+
     return app
 
 

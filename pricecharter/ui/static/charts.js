@@ -21,45 +21,69 @@ function baseLayout(extra = {}) {
 const plotConfig = { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["select2d", "lasso2d"] };
 
 // Direct label at each line's last point so identity never relies on color alone.
-function endLabels(traces) {
-  return traces.map((t) => ({
-    x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], text: t.name.replace(/^Console index.*/, "Index"), showarrow: false,
+// Labels closer than MIN_GAP px are pushed apart (estimated from the plot height, linear or log y).
+const MIN_GAP = 15;
+function endLabels(traces, el, log) {
+  const pts = traces.map((t) => ({ t, x: t.x[t.x.length - 1], y: t.y[t.y.length - 1] }));
+  const f = (v) => (log ? Math.log10(Math.max(v, 1e-9)) : v);
+  const all = traces.flatMap((t) => t.y).map(f);
+  const lo = Math.min(...all), hi = Math.max(...all), h = Math.max(el.clientHeight - 90, 100);
+  pts.forEach((p) => { p.px = ((f(p.y) - lo) / (hi - lo || 1)) * h; p.at = p.px; });
+  pts.sort((a, b) => b.px - a.px);
+  for (let i = 1; i < pts.length; i++) pts[i].at = Math.min(pts[i].at, pts[i - 1].at - MIN_GAP);
+  return pts.map((p) => ({
+    x: p.x, y: log ? Math.log10(p.y) : p.y, yshift: p.at - p.px,
+    text: p.t.name.replace(/^Console index.*/, "Index"), showarrow: false,
     xanchor: "left", xshift: 6, font: { color: css("--text-2"), size: 12 },
   }));
 }
 
-function priceTraces(data) {
+function conditionTraces(data, unit) {
+  const fmt = unit === "%" ? "%{y:+.1f}%" : "$%{y:,.2f}";
   return data.map((s) => ({
     type: "scatter", mode: "lines", name: CONDITION_LABEL[s.cond] || s.cond, x: s.x, y: s.y,
     line: { color: css(`--series-${s.cond}`), width: 2 },
-    hovertemplate: "$%{y:,.2f}<extra>%{fullData.name}</extra>",
+    hovertemplate: `${fmt}<extra>%{fullData.name}</extra>`,
   }));
 }
 
-function drawPriceChart(el, data, { log = false, extraTraces = [] } = {}) {
-  const traces = [...priceTraces(data), ...extraTraces];
-  const layout = baseLayout({ annotations: endLabels(traces.filter((t) => !t.noLabel)) });
+function drawSeriesChart(el, data, { unit = "$", log = false, extraTraces = [] } = {}) {
+  const traces = [...conditionTraces(data, unit), ...extraTraces];
+  const layout = baseLayout({ annotations: endLabels(traces, el, log && unit !== "%") });
   const xs = traces.flatMap((t) => [t.x[0], t.x[t.x.length - 1]]).sort();
   layout.xaxis = { ...layout.xaxis, range: [xs[0], xs[xs.length - 1]] };
-  layout.yaxis = { ...layout.yaxis, type: log ? "log" : "linear", tickprefix: "$", tickformat: log ? "" : ",.0f" };
+  layout.yaxis = unit === "%"
+    ? { ...layout.yaxis, ticksuffix: "%", zeroline: true, zerolinecolor: css("--border") }
+    : { ...layout.yaxis, type: log ? "log" : "linear", tickprefix: "$", tickformat: log ? "" : ",.0f" };
   Plotly.react(el, traces, layout, plotConfig);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const el = document.getElementById("price-chart");
-  if (!el) return;
-  const data = JSON.parse(document.getElementById("price-data").textContent);
+const readJSON = (id) => { const el = document.getElementById(id); return el ? JSON.parse(el.textContent) : null; };
+
+// Game page: prices, log toggle, optional console-index overlay.
+function initPriceChart(el) {
+  const data = readJSON(el.dataset.src);
+  const index = readJSON("index-data") || [];
   const log = document.getElementById("log-scale");
-  const idxEl = document.getElementById("index-data");
-  const index = idxEl ? JSON.parse(idxEl.textContent) : [];
   const idxCond = document.getElementById("index-cond");
   const indexTraces = () => index.filter((s) => idxCond && s.cond === idxCond.value).map((s) => ({
     type: "scatter", mode: "lines", name: `Console index (${CONDITION_LABEL[s.cond]})`, x: s.x, y: s.y,
     line: { color: css("--series-index"), width: 2, dash: "dash" },
     hovertemplate: "$%{y:,.2f}<extra>index</extra>",
   }));
-  const draw = () => drawPriceChart(el, data, { log: log && log.checked, extraTraces: indexTraces() });
-  draw();
+  const draw = () => drawSeriesChart(el, data, { log: log && log.checked, extraTraces: indexTraces() });
   for (const c of [log, idxCond]) if (c) c.addEventListener("change", draw);
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  return draw;
+}
+
+const CHARTS = {
+  price: initPriceChart,
+  index: (el) => { const data = readJSON(el.dataset.src); return () => drawSeriesChart(el, data, { unit: "%" }); },
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const draws = [...document.querySelectorAll("[data-chart]")].map((el) => CHARTS[el.dataset.chart](el));
+  const redraw = () => draws.forEach((d) => d());
+  redraw();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 });
