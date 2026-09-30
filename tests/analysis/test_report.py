@@ -55,3 +55,10 @@ def test_cli_report_flags():
 def test_model_section(result, tmp_path):
     html = render_report(result, tmp_path / "r.html").read_text()
     assert "Model check" in html
+
+
+def test_curve_shapes_section(result, tmp_path):
+    html = render_report(result, tmp_path / "r.html").read_text()
+    assert "Curve shapes" in html and 'id="cluster-chart"' in html
+    blob = re.search(r'<script id="chart-data" type="application/json">(.*?)</script>', html, re.S).group(1)
+    assert len(json.loads(blob)["clusters"]) == 5

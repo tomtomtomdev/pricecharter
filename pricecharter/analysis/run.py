@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from .clusters import cluster_curves, curve_matrix, profile_clusters
 from .factors import CATEGORICAL, build_factors
 from .index import console_index
 from .label import label_rising
@@ -16,6 +17,7 @@ from .model import build_samples, fit_model
 from .patterns import mine_patterns
 
 TABLES = ["console_index", "series_metrics", "factor_lift", "patterns"]
+OPTIONAL_TABLES = ["model_importance", "curve_clusters", "cluster_summary", "cluster_profile"]
 PATTERN_FACTORS = [c for c in CATEGORICAL if c not in ("developer",)]
 
 
@@ -31,11 +33,15 @@ class AnalysisResult:
     history: pd.DataFrame = field(repr=False)
     model_summary: dict = field(default_factory=dict)
     model_importance: pd.DataFrame = field(default_factory=pd.DataFrame)
+    curve_clusters: pd.DataFrame = field(default_factory=pd.DataFrame)
+    cluster_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
+    cluster_profile: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def analyze(
     conn: sqlite3.Connection, consoles: list[str] | None = None, conditions: list[str] | None = None,
     window: int = 36, top: float = 0.2, asof: str | None = None, min_support: int = 30, model: bool = True,
+    clusters: int = 5,
 ) -> AnalysisResult:
     history = load_history(conn, consoles, conditions)
     if history.empty:
@@ -55,6 +61,9 @@ def analyze(
         "base_rate": float(metrics["rising"].mean()) if metrics["rising"].notna().any() else None,
     }
     res = AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history)
+    res.curve_clusters, res.cluster_summary = cluster_curves(curve_matrix(history, idx), k=clusters)
+    if not res.curve_clusters.empty:
+        res.cluster_profile = profile_clusters(res.curve_clusters, factors, CATEGORICAL, min_support=support)
     if model:
         fitted = fit_model(build_samples(history, idx, games, window=window), window=window)
         res.model_summary, res.model_importance = fitted.summary, fitted.importance
@@ -72,8 +81,11 @@ def _for_sql(df: pd.DataFrame) -> pd.DataFrame:
 def persist(conn: sqlite3.Connection, res: AnalysisResult) -> int:
     for name in TABLES:
         _for_sql(getattr(res, name)).to_sql(name, conn, if_exists="replace", index=False)
+    for name in OPTIONAL_TABLES:
+        df = getattr(res, name)
+        if not df.empty:
+            _for_sql(df).to_sql(name, conn, if_exists="replace", index=False)
     if res.model_summary:
-        res.model_importance.to_sql("model_importance", conn, if_exists="replace", index=False)
         pd.DataFrame([{k: (str(v) if isinstance(v, bool) else v) for k, v in res.model_summary.items()}]).to_sql(
             "model_summary", conn, if_exists="replace", index=False)
     conn.execute(

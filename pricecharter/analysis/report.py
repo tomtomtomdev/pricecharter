@@ -44,6 +44,27 @@ def _factor_bars(lift: pd.DataFrame) -> dict[str, dict]:
     return out
 
 
+def _cluster_traces(summary: pd.DataFrame) -> list[dict]:
+    return [
+        {"name": f"{r.shape} ({r.n})", "y": json.loads(r.centroid)}
+        for r in summary.sort_values("end_value", ascending=False).itertuples()
+    ]
+
+
+def _clusters(res: AnalysisResult) -> list[dict]:
+    if res.cluster_summary.empty:
+        return []
+    out = []
+    for r in res.cluster_summary.sort_values("end_value", ascending=False).itertuples():
+        prof = res.cluster_profile[res.cluster_profile["cluster"] == r.cluster] if not res.cluster_profile.empty \
+            else pd.DataFrame(columns=["factor", "value", "lift"])
+        out.append({
+            "shape": r.shape, "n": r.n, "share": r.share, "end": float(np.exp(r.end_value) - 1),
+            "traits": [f"{p.factor}={p.value} ({p.lift:.1f}×)" for p in prof.itertuples()],
+        })
+    return out
+
+
 def _names(ids: str, games: pd.DataFrame) -> list[str]:
     out = []
     for gid in filter(None, (ids or "").split(",")):
@@ -75,7 +96,9 @@ def context(res: AnalysisResult) -> dict:
         "factors": factors,
         "patterns": patterns,
         "chart_json": _json_for_script({"index": _index_traces(res.console_index),
-                                        "factors": _factor_bars(res.factor_lift)}),
+                                        "factors": _factor_bars(res.factor_lift),
+                                        "clusters": _cluster_traces(res.cluster_summary)}),
+        "clusters": _clusters(res),
         "model": res.model_summary,
         "importance": res.model_importance.head(10).to_dict("records") if not res.model_importance.empty else [],
     }

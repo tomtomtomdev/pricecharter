@@ -107,6 +107,17 @@
   </div>
   {% endfor %}
 
+  {% if clusters %}
+  <h2>Curve shapes</h2>
+  <p class="sub">Each title's last five years of price relative to its console index, grouped by shape (all conditions). Lines are the typical path of each group, in log units from its starting point.</p>
+  <div class="card"><div id="cluster-chart" class="chart"></div></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Shape</th><th class="num">Titles</th><th class="num">vs console</th><th>Over-represented traits</th></tr></thead>
+    <tbody>{% for c in clusters %}<tr><td>{{ c.shape }}</td><td class="num">{{ "{:,}".format(c.n) }} ({{ "%.0f%%" | format(c.share * 100) }})</td>
+      <td class="num">{{ "%+.0f%%" | format(c.end * 100) }}</td><td class="ex">{{ c.traits | join(" · ") or "—" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+
   {% if model %}
   <h2>Model check</h2>
   {% if model.status == "ok" %}
@@ -174,6 +185,15 @@
                  xaxis: { title: "lift vs baseline (×)", gridcolor: v("--grid") },
                  shapes: [{ type: "line", x0: 1, x1: 1, yref: "paper", y0: 0, y1: 1,
                             line: { color: v("--muted"), dash: "dot" } }] }), config);
+  }
+  if (window.Plotly && data.clusters && data.clusters.length) {
+    var n = data.clusters[0].y.length;
+    var xs = data.clusters[0].y.map(function (_, i) { return Math.round(i * 60 / (n - 1)); });
+    Plotly.newPlot("cluster-chart", data.clusters.map(function (c) {
+      return { type: "scatter", mode: "lines", name: c.name, x: xs, y: c.y, line: { width: 2.2 },
+               hovertemplate: "month %{x}: %{y:.2f}<extra>" + c.name + "</extra>" };
+    }), layout({ xaxis: { title: "months into window", gridcolor: v("--grid") },
+                 yaxis: { title: "excess log price", gridcolor: v("--grid") } }), config);
   }
   var buttons = document.querySelectorAll(".tabs button");
   function select(cond) {

@@ -75,3 +75,9 @@ def test_model_persisted(db):
 def test_model_can_be_skipped(db):
     res = analyze(db, model=False)
     assert res.model_summary == {}
+
+
+def test_clusters_persisted(db):
+    persist(db, analyze(db, model=False))
+    assert _count(db, "cluster_summary") == 5
+    assert _count(db, "curve_clusters") > 0
