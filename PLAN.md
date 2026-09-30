@@ -44,7 +44,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **A2 Console index** — median monthly log-return per console × condition.
 - [x] **A3 Series metrics** — excess return (1y/3y/5y/all), log slope, volatility, max drawdown,
       biggest-jump month → `series_metrics`.
-- [ ] **A4 Rising label** — top 20% 3y excess return per console × condition, ≥24 months.
+- [x] **A4 Rising label** — top 20% 3y excess return per console × condition, ≥24 months.
 - [ ] **A5 Factors** — region, platform, genre, publisher, release year, lifecycle position,
       franchise/keyword tokens, price bucket, CIB/Loose & New/CIB ratios, sales liquidity.
 - [ ] **A6 Factor lift** — rise rate vs baseline, lift, Wilson CI, min support → `factor_lift`.
