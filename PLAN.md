@@ -47,7 +47,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **A4 Rising label** — top 20% 3y excess return per console × condition, ≥24 months.
 - [x] **A5 Factors** — region, platform, genre, publisher, release year, lifecycle position,
       franchise/keyword tokens, price bucket, CIB/Loose & New/CIB ratios, sales liquidity.
-- [ ] **A6 Factor lift** — rise rate vs baseline, lift, Wilson CI, min support → `factor_lift`.
+- [x] **A6 Factor lift** — rise rate vs baseline, lift, Wilson CI, min support → `factor_lift`.
 - [ ] **A7 Patterns** — frequent itemsets (≤3 factors) over discretized factors ⇒ rising rules (support, confidence, lift) → `patterns`.
 - [ ] **A8 CLI + persistence** — `pricecharter analyze` writes tables + `analysis_runs`.
 - [ ] **A9 Report** — HTML: console indices, top factors, top patterns with example titles.
