@@ -68,7 +68,7 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
       test: app boots on synth DB and a write through its connection fails.
 - [x] **U2 Dashboard `/`** — per-console coverage (listed, detail-fetched, stale > `--stale-days`, with history),
       recent `crawl_runs` (ok/failed/error), last `analysis_runs` row.
-- [ ] **U3 Browse `/games`** — name search, filters (platform, region, console, genre), sort (current price, list rank,
+- [x] **U3 Browse `/games`** — name search, filters (platform, region, console, genre), sort (current price, list rank,
       name, 3y excess return when available), pagination; HTMX partial for live search.
 - [ ] **U4 Game page `/games/{id}`** — metadata + image, latest loose/CIB/new, Plotly monthly history (log toggle),
       recent sales table, link back to PriceCharting; 404 for unknown id.

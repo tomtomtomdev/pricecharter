@@ -1,0 +1,29 @@
+<p class="muted">{{ "{:,}".format(total) }} titles{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}</p>
+{% if rows %}
+<div class="scroll"><table class="games">
+  <thead><tr><th>Title</th><th>Console</th><th>Genre</th><th>Released</th>
+    {% for c in ["loose", "cib", "new"] %}<th class="num {% if c == cond %}hl{% endif %}">{{ c|upper if c == "cib" else c|capitalize }}</th>{% endfor %}
+    {% if has_analysis %}<th class="num">3y excess ({{ cond }})</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><a href="/games/{{ r.id }}">{{ r.name }}</a></td>
+      <td class="muted nowrap">{{ r.console }}</td><td>{{ r.genre or "" }}</td>
+      <td class="muted">{{ (r.release_date or "")[:4] }}</td>
+      <td class="num">{{ r.loose_cents|usd }}</td><td class="num">{{ r.cib_cents|usd }}</td><td class="num">{{ r.new_cents|usd }}</td>
+      {% if has_analysis %}
+      <td class="num {% if r.excess_36m is not none %}{{ 'up' if r.excess_36m > 0 else 'bad' }}{% endif %}">{{ r.excess_36m|pct }}</td>
+      {% endif %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="/games?{{ query(page=page - 1) }}" hx-get="/games?{{ query(page=page - 1) }}" hx-target="#results" hx-push-url="true">← Prev</a>{% endif %}
+  {% if page < pages %}<a href="/games?{{ query(page=page + 1) }}" hx-get="/games?{{ query(page=page + 1) }}" hx-target="#results" hx-push-url="true">Next →</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p class="muted">No titles match.</p>
+{% endif %}

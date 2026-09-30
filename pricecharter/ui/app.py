@@ -3,9 +3,10 @@
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
+from urllib.parse import urlencode
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -13,6 +14,9 @@ from . import queries
 
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=HERE / "templates")
+templates.env.filters["usd"] = lambda c: "" if c is None else f"${c / 100:,.2f}"
+templates.env.filters["pct"] = lambda x: "" if x is None else f"{x:+.0%}"
+PER_PAGE = 50
 
 
 def readonly_connect(path: Path) -> sqlite3.Connection:
@@ -54,5 +58,24 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             "coverage": cov, "totals": totals, "stale_days": stale_days,
             "runs": queries.recent_runs(conn), "analysis": queries.last_analysis(conn),
         })
+
+    @app.get("/games")
+    def games(
+        request: Request, conn: Conn, q: str = "", console: str = "", platform: str = "", region: str = "",
+        genre: str = "", sort: Literal["price", "rank", "name", "excess"] = "price",
+        cond: Literal["loose", "cib", "new"] = "loose", page: Annotated[int, Query(ge=1)] = 1,
+    ):
+        filters = {"console": console, "platform": platform, "region": region, "genre": genre}
+        rows, total = queries.search_games(conn, q=q, sort=sort, cond=cond, page=page, per_page=PER_PAGE, **filters)
+        ctx = {
+            "rows": rows, "total": total, "page": page, "pages": max(1, -(-total // PER_PAGE)),
+            "q": q, "sort": sort, "cond": cond, "filters": filters,
+            "has_analysis": queries.table_exists(conn, "series_metrics"),
+            "query": lambda **kw: urlencode({k: v for k, v in (
+                {"q": q, **filters, "sort": sort, "cond": cond, "page": page} | kw).items() if v}),
+        }
+        if request.headers.get("HX-Request"):
+            return templates.TemplateResponse(request, "_games_results.html", ctx)
+        return templates.TemplateResponse(request, "games.html", ctx | {"facets": queries.facets(conn)})
 
     return app

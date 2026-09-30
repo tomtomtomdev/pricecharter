@@ -34,3 +34,17 @@ code { font-size: 13px; background: var(--border); padding: 1px 5px; border-radi
 .tile .value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tile .muted { font-size: 13px; }
 .bad { color: var(--down); }
+.up { color: var(--up); }
+.hl { color: var(--text); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.filters input, .filters select { font: inherit; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text); }
+.filters input[type=search] { flex: 1 1 240px; min-width: 0; }
+.pager { display: flex; gap: 16px; margin: 16px 0; }
+td.nowrap { white-space: nowrap; }
+@media (max-width: 640px) {
+  .filters input[type=search] { flex-basis: 100%; }
+  .filters select { flex: 1 1 40%; min-width: 0; }
+  .top { gap: 12px; }
+}
+.games td:first-child { min-width: 11em; }

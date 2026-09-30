@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %} · games{% endblock %}
+{% block content %}
+<h1>Games</h1>
+<form class="filters" hx-get="/games" hx-target="#results" hx-push-url="true"
+      hx-trigger="input changed delay:300ms from:input[name=q], change">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search titles…" autofocus>
+  {% for col in ["platform", "region", "console", "genre"] %}
+  <select name="{{ col }}" aria-label="{{ col }}">
+    <option value="">All {{ col }}s</option>
+    {% for v in facets[col] %}<option {% if filters[col] == v %}selected{% endif %}>{{ v }}</option>{% endfor %}
+  </select>
+  {% endfor %}
+  <select name="cond" aria-label="condition">
+    {% for c in ["loose", "cib", "new"] %}<option {% if cond == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="sort" aria-label="sort">
+    {% for v, label in [("price", "Price"), ("rank", "List rank"), ("name", "Name"), ("excess", "3y excess return")] %}
+      {% if v != "excess" or has_analysis %}
+      <option value="{{ v }}" {% if sort == v %}selected{% endif %}>{{ label }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+</form>
+<div id="results">{% include "_games_results.html" %}</div>
+{% endblock %}
