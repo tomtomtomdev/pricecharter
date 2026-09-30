@@ -3,7 +3,9 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS games (
     id              INTEGER PRIMARY KEY,          -- PriceCharting ID
-    console         TEXT NOT NULL,                -- e.g. 'nes', 'playstation-2'
+    console         TEXT NOT NULL,                -- PriceCharting slug, e.g. 'pal-nes', 'famicom'
+    platform        TEXT,                         -- 'nes', 'ps2', ... (region-independent)
+    region          TEXT,                         -- 'ntsc-u' | 'pal' | 'ntsc-j'
     slug            TEXT NOT NULL,
     name            TEXT NOT NULL,
     image_url       TEXT,

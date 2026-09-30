@@ -8,13 +8,15 @@ history, and recent sold listings per condition.
 
 ```sh
 ./run.sh                          # list + details, all consoles
-./run.sh list -c nes ps2          # just the lists
+./run.sh list -c nes ps2 -r pal   # just the PAL lists
 ./run.sh details -c switch --limit 50
 ```
 
 `run.sh` installs `uv` if missing, syncs deps, and runs the crawler. Requires Google Chrome.
 
-Consoles: `nes snes gba ds 3ds gamecube wii wiiu ps1 ps2 psp vita ps3 switch xbox xbox360` (or full slugs like `playstation-2`).
+Platforms: `nes snes gba ds 3ds gamecube wii wiiu ps1 ps2 psp vita ps3 switch xbox xbox360`,
+each crawled in three regions (48 console pages): `-r ntsc-u pal ntsc-j` (default all).
+Exact slugs work too, e.g. `-c pal-nes famicom`. Japanese NES/SNES are `famicom`/`super-famicom`.
 
 Options: `--db pricecharter.db`, `--interval 1.0` (min seconds between requests),
 `--stale-days 7` (re-fetch details older than this), `--limit N`, `--release-date YYYY-MM-DD`.
@@ -36,7 +38,7 @@ Options: `--db pricecharter.db`, `--interval 1.0` (min seconds between requests)
 
 | table | contents |
 |---|---|
-| `games` | id (PriceCharting ID), console, slug, name, image, genre, release date, publisher, developer, UPC, ePID, list rank |
+| `games` | id (PriceCharting ID), console slug, platform, region (ntsc-u/pal/ntsc-j), slug, name, image, genre, release date, publisher, developer, UPC, ePID, list rank |
 | `price_snapshots` | current loose/cib/new cents per game per day, from `list` and `detail` |
 | `price_history` | `(game_id, condition, month) → price_cents`, condition ∈ loose/cib/new |
 | `sales` | recent sold listings: condition, sale id, date, title, price, source (ebay/goldin/…), url |

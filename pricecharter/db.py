@@ -1,27 +1,51 @@
 import sqlite3
 from pathlib import Path
 
+from .consoles import all_consoles, by_slug
+
 SCHEMA = Path(__file__).with_name("schema.sql")
+
+# Columns added after the first release; connect() adds any that an older DB lacks.
+ADDED_COLUMNS = {
+    "games": {"platform": "TEXT", "region": "TEXT"},
+}
 
 
 def connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA.read_text())
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, cols in ADDED_COLUMNS.items():
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for col, decl in cols.items():
+            if col not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    conn.executemany(
+        "UPDATE games SET platform = ?, region = ? WHERE console = ? AND (platform IS NULL OR region IS NULL)",
+        [(c.platform, c.region, c.slug) for c in all_consoles()],
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS games_region ON games (platform, region)")
+    conn.commit()
 
 
 def upsert_list_game(conn: sqlite3.Connection, g: dict, rank: int, day: str) -> None:
     conn.execute(
         """
-        INSERT INTO games (id, console, slug, name, image_url, list_rank, last_list_at)
-        VALUES (:id, :console, :slug, :name, :image_url, :rank, datetime('now'))
+        INSERT INTO games (id, console, platform, region, slug, name, image_url, list_rank, last_list_at)
+        VALUES (:id, :console, :platform, :region, :slug, :name, :image_url, :rank, datetime('now'))
         ON CONFLICT (id) DO UPDATE SET
-            console = excluded.console, slug = excluded.slug, name = excluded.name,
+            console = excluded.console, platform = excluded.platform, region = excluded.region,
+            slug = excluded.slug, name = excluded.name,
             image_url = excluded.image_url, list_rank = excluded.list_rank,
             last_list_at = excluded.last_list_at
         """,
-        {**g, "rank": rank},
+        {**g, "rank": rank, "platform": c.platform if (c := by_slug(g["console"])) else None,
+         "region": c.region if c else None},
     )
     save_snapshot(conn, g["id"], day, "list", g)
 
