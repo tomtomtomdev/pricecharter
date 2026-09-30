@@ -72,7 +72,7 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
       name, 3y excess return when available), pagination; HTMX partial for live search.
 - [x] **U4 Game page `/games/{id}`** — metadata + image, latest loose/CIB/new, Plotly monthly history (log toggle),
       recent sales table, link back to PriceCharting; 404 for unknown id.
-- [ ] **U5 Analysis on game page** — console index overlay, `series_metrics` (excess returns, drawdown, biggest jump),
+- [x] **U5 Analysis on game page** — console index overlay, `series_metrics` (excess returns, drawdown, biggest jump),
       rising label, curve cluster, watchlist membership; hidden when tables are missing.
 - [ ] **U6 Console page `/consoles/{slug}`** — index chart per condition, top risers/fallers by excess return, coverage.
 - [ ] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;

@@ -64,3 +64,10 @@ td.nowrap { white-space: nowrap; }
 .table-view { margin: 12px 0; }
 .table-view summary { cursor: pointer; color: var(--muted); }
 .table-view .scroll { max-height: 360px; overflow-y: auto; }
+.callout { border: 1px solid var(--border); border-left: 3px solid var(--up); background: var(--surface);
+  border-radius: 6px; padding: 10px 14px; margin: 8px 0 12px; }
+.badge { font-weight: 600; white-space: nowrap; }
+.callout ul { margin: 6px 0 0; padding-left: 18px; }
+.callout li { margin: 2px 0; }
+.chart-controls select { font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text); }

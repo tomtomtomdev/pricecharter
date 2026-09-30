@@ -1,5 +1,6 @@
 """FastAPI app: server-rendered pages over a read-only SQLite connection."""
 
+import math
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
@@ -15,7 +16,9 @@ from . import queries
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.filters["usd"] = lambda c: "" if c is None else f"${c / 100:,.2f}"
-templates.env.filters["pct"] = lambda x: "" if x is None else f"{x:+.0%}"
+templates.env.filters["pct"] = lambda x: "" if x is None or x != x else f"{x:+.0%}".replace("-", "−")
+# series_metrics stores log returns; show them as simple % changes
+templates.env.filters["logpct"] = lambda x: "" if x is None or x != x else templates.env.filters["pct"](math.exp(x) - 1)
 PER_PAGE = 50
 
 
@@ -89,7 +92,7 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             # a list, not a dict: tojson sorts keys and the series order is loose, cib, new
             "chart": [{"cond": c, "x": [m for m, _ in p], "y": [round(v / 100, 2) for _, v in p]}
                       for c, p in hist.items()],
-            "table": _history_table(hist),
+            "table": _history_table(hist), "analysis": queries.game_analysis(conn, game_id),
         })
 
     return app

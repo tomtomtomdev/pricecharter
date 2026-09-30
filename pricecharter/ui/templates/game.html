@@ -34,7 +34,15 @@
 {% if chart %}
 <div class="chart-controls">
   <label><input type="checkbox" id="log-scale"> Log scale</label>
+  {% if analysis and analysis.index %}
+  <label>vs console index
+    <select id="index-cond">
+      <option value="">none</option>
+      {% for s in analysis.index %}<option value="{{ s.cond }}" {% if loop.first %}selected{% endif %}>{{ s.cond }}</option>{% endfor %}
+    </select></label>
+  {% endif %}
 </div>
+{% if analysis and analysis.index %}<script type="application/json" id="index-data">{{ analysis.index|tojson }}</script>{% endif %}
 <div id="price-chart" class="chart" role="img" aria-label="Monthly price history for {{ g.name }}"></div>
 <script type="application/json" id="price-data">{{ chart|tojson }}</script>
 <details class="table-view">
@@ -46,6 +54,40 @@
 </details>
 {% else %}
 <p class="muted">No price history yet — the details crawl hasn't fetched this title.</p>
+{% endif %}
+
+<h2>Analysis</h2>
+{% if analysis is none %}
+<p class="muted">No analysis yet — run <code>./run.sh analyze</code> to compare this title with its console.</p>
+{% elif not analysis.metrics %}
+<p class="muted">Not enough history for this title in the latest analysis.</p>
+{% else %}
+{% if analysis.watchlist %}
+<div class="callout"><strong>On the watchlist</strong> — best matches for rising patterns
+  <ul>{% for w in analysis.watchlist %}
+    <li>{{ w.condition }} · score {{ "%.2f"|format(w.score) }} ·
+      {% for p in w.patterns %}<code>{{ p }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</li>
+  {% endfor %}</ul></div>
+{% endif %}
+<p class="muted">Returns are relative to the {{ g.console }} console index (median title), so market-wide booms don't count.</p>
+<div class="scroll"><table>
+  <thead><tr><th>Condition</th><th>Label</th><th>Curve shape</th><th class="num">1y excess</th><th class="num">3y excess</th>
+    <th class="num">5y excess</th><th class="num">All-time excess</th><th class="num">Max drawdown</th><th>Biggest 3-month jump</th></tr></thead>
+  <tbody>
+  {% for m in analysis.metrics %}
+    <tr>
+      <td>{{ m.condition }}</td>
+      <td>{% if m.rising == 1 %}<span class="badge up">▲ Rising</span>{% elif m.rising == 0 %}<span class="muted">—</span>{% else %}<span class="muted">too short</span>{% endif %}</td>
+      <td>{{ m.shape or "" }}</td>
+      {% for k in ["excess_12m", "excess_36m", "excess_60m", "excess_all"] %}
+      <td class="num {% if m[k] is not none and m[k] == m[k] %}{{ 'up' if m[k] > 0 else 'bad' }}{% endif %}">{{ m[k]|logpct }}</td>
+      {% endfor %}
+      <td class="num">{{ m.max_drawdown|pct }}</td>
+      <td>{% if m.jump_month %}{{ m.jump_size|logpct }} <span class="muted">to {{ m.jump_month[:7] }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
 {% endif %}
 
 <h2>Recent sales</h2>

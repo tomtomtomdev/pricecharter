@@ -12,7 +12,7 @@
       <td class="muted">{{ (r.release_date or "")[:4] }}</td>
       <td class="num">{{ r.loose_cents|usd }}</td><td class="num">{{ r.cib_cents|usd }}</td><td class="num">{{ r.new_cents|usd }}</td>
       {% if has_analysis %}
-      <td class="num {% if r.excess_36m is not none %}{{ 'up' if r.excess_36m > 0 else 'bad' }}{% endif %}">{{ r.excess_36m|pct }}</td>
+      <td class="num {% if r.excess_36m is not none %}{{ 'up' if r.excess_36m > 0 else 'bad' }}{% endif %}">{{ r.excess_36m|logpct }}</td>
       {% endif %}
     </tr>
   {% endfor %}

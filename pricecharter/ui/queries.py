@@ -1,5 +1,6 @@
 """Read-only SQL for the web UI. Analysis tables are optional: they exist only after `analyze`."""
 
+import math
 import sqlite3
 
 from ..consoles import all_consoles
@@ -134,3 +135,42 @@ def sales(conn: sqlite3.Connection, game_id: int, limit: int = 60) -> list[dict]
     return [dict(r) for r in conn.execute(
         "SELECT * FROM sales WHERE game_id = ? ORDER BY sale_date DESC, condition LIMIT ?", (game_id, limit),
     )]
+
+
+def game_analysis(conn: sqlite3.Connection, game_id: int) -> dict | None:
+    """Latest analysis for one title, or None if `analyze` hasn't run. Optional tables degrade to empty."""
+    if not table_exists(conn, "series_metrics"):
+        return None
+    shape = ("(SELECT cc.shape FROM curve_clusters cc WHERE cc.game_id = sm.game_id AND cc.condition = sm.condition)"
+             if table_exists(conn, "curve_clusters") else "NULL")
+    metrics = [dict(r) for r in conn.execute(
+        f"""SELECT sm.*, {shape} AS shape FROM series_metrics sm WHERE sm.game_id = ?
+            ORDER BY CASE sm.condition WHEN 'loose' THEN 0 WHEN 'cib' THEN 1 ELSE 2 END""",
+        (game_id,),
+    )]
+    watch = [dict(r) for r in conn.execute("SELECT * FROM watchlist WHERE game_id = ? ORDER BY score DESC",
+                                           (game_id,))] if table_exists(conn, "watchlist") else []
+    for w in watch:
+        w["patterns"] = [p.strip() for p in (w.get("matched") or "").split(" | ") if p.strip()]
+    return {"metrics": metrics, "watchlist": watch, "index": _rebased_index(conn, game_id)}
+
+
+def _rebased_index(conn: sqlite3.Connection, game_id: int) -> list[dict]:
+    """Console index per condition scaled to start at the title's first price, over the title's months."""
+    if not table_exists(conn, "console_index"):
+        return []
+    console = conn.execute("SELECT console FROM games WHERE id = ?", (game_id,)).fetchone()[0]
+    out = []
+    for cond, pts in history(conn, game_id).items():
+        first_month, first_cents = pts[0]
+        rows = conn.execute(
+            """SELECT month, level FROM console_index WHERE console = ? AND condition = ? AND month BETWEEN ? AND ?
+               AND level IS NOT NULL ORDER BY month""",
+            (console, cond, first_month, pts[-1][0]),
+        ).fetchall()
+        if not rows or rows[0]["month"] != first_month:
+            continue
+        base = rows[0]["level"]
+        out.append({"cond": cond, "x": [r["month"] for r in rows],
+                    "y": [round(first_cents / 100 * math.exp(r["level"] - base), 2) for r in rows]})
+    return out

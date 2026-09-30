@@ -23,7 +23,7 @@ const plotConfig = { displaylogo: false, responsive: true, modeBarButtonsToRemov
 // Direct label at each line's last point so identity never relies on color alone.
 function endLabels(traces) {
   return traces.map((t) => ({
-    x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], text: t.name, showarrow: false,
+    x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], text: t.name.replace(/^Console index.*/, "Index"), showarrow: false,
     xanchor: "left", xshift: 6, font: { color: css("--text-2"), size: 12 },
   }));
 }
@@ -50,8 +50,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!el) return;
   const data = JSON.parse(document.getElementById("price-data").textContent);
   const log = document.getElementById("log-scale");
-  const draw = () => drawPriceChart(el, data, { log: log && log.checked, extraTraces: window.extraPriceTraces || [] });
+  const idxEl = document.getElementById("index-data");
+  const index = idxEl ? JSON.parse(idxEl.textContent) : [];
+  const idxCond = document.getElementById("index-cond");
+  const indexTraces = () => index.filter((s) => idxCond && s.cond === idxCond.value).map((s) => ({
+    type: "scatter", mode: "lines", name: `Console index (${CONDITION_LABEL[s.cond]})`, x: s.x, y: s.y,
+    line: { color: css("--series-index"), width: 2, dash: "dash" },
+    hovertemplate: "$%{y:,.2f}<extra>index</extra>",
+  }));
+  const draw = () => drawPriceChart(el, data, { log: log && log.checked, extraTraces: indexTraces() });
   draw();
-  if (log) log.addEventListener("change", draw);
+  for (const c of [log, idxCond]) if (c) c.addEventListener("change", draw);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
 });
