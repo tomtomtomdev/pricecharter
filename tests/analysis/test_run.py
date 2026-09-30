@@ -81,3 +81,8 @@ def test_clusters_persisted(db):
     persist(db, analyze(db, model=False))
     assert _count(db, "cluster_summary") == 5
     assert _count(db, "curve_clusters") > 0
+
+
+def test_pre_breakout_persisted(db):
+    persist(db, analyze(db, model=False))
+    assert _count(db, "pre_breakout") > 0

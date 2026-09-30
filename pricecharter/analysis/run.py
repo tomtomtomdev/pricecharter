@@ -15,9 +15,10 @@ from .loader import load_games, load_history, load_sales
 from .metrics import series_metrics
 from .model import build_samples, fit_model
 from .patterns import mine_patterns
+from .signals import pre_breakout_signals
 
 TABLES = ["console_index", "series_metrics", "factor_lift", "patterns"]
-OPTIONAL_TABLES = ["model_importance", "curve_clusters", "cluster_summary", "cluster_profile"]
+OPTIONAL_TABLES = ["model_importance", "curve_clusters", "cluster_summary", "cluster_profile", "pre_breakout"]
 PATTERN_FACTORS = [c for c in CATEGORICAL if c not in ("developer",)]
 
 
@@ -36,6 +37,7 @@ class AnalysisResult:
     curve_clusters: pd.DataFrame = field(default_factory=pd.DataFrame)
     cluster_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
     cluster_profile: pd.DataFrame = field(default_factory=pd.DataFrame)
+    pre_breakout: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def analyze(
@@ -64,6 +66,7 @@ def analyze(
     res.curve_clusters, res.cluster_summary = cluster_curves(curve_matrix(history, idx), k=clusters)
     if not res.curve_clusters.empty:
         res.cluster_profile = profile_clusters(res.curve_clusters, factors, CATEGORICAL, min_support=support)
+    res.pre_breakout = pre_breakout_signals(history, idx)
     if model:
         fitted = fit_model(build_samples(history, idx, games, window=window), window=window)
         res.model_summary, res.model_importance = fitted.summary, fitted.importance

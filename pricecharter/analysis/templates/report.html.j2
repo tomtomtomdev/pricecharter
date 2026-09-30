@@ -118,6 +118,27 @@
   </table></div>
   {% endif %}
 
+  {% if signals %}
+  <h2>Before the jumps</h2>
+  <p class="sub">Months just before the biggest 6-month excess moves (top 5%) compared with ordinary months far from any jump, using only data available at the time. Effect size is Cohen's d (0.2 small, 0.5 medium, 0.8 large).</p>
+  {% for c in conditions %}
+  <div class="scroll" data-panel="{{ c }}" {% if not loop.first %}hidden{% endif %}>
+    <table>
+      <thead><tr><th>Signal</th><th class="num">Before jumps</th><th class="num">Ordinary</th><th class="num">Effect (d)</th><th class="num">p</th><th class="num">Jumps</th></tr></thead>
+      <tbody>
+      {% for r in signals.get(c, []) %}
+        <tr><td><code>{{ r.signal }}</code><div class="ex">{{ r.description }}</div></td>
+            <td class="num">{{ "%+.3f" | format(r.breakout_mean) }}</td><td class="num">{{ "%+.3f" | format(r.control_mean) }}</td>
+            <td class="num {{ 'lift' if r.cohens_d | abs >= 0.5 else '' }}">{{ "%+.2f" | format(r.cohens_d) }}</td>
+            <td class="num">{{ "%.0e" | format(r.p_value) if r.p_value < 0.001 else "%.3f" | format(r.p_value) }}</td>
+            <td class="num">{{ r.n_breakout }}</td></tr>
+      {% else %}<tr><td colspan="6">Not enough jumps for this condition.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+  {% endif %}
+
   {% if model %}
   <h2>Model check</h2>
   {% if model.status == "ok" %}

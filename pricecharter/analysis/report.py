@@ -99,6 +99,8 @@ def context(res: AnalysisResult) -> dict:
                                         "factors": _factor_bars(res.factor_lift),
                                         "clusters": _cluster_traces(res.cluster_summary)}),
         "clusters": _clusters(res),
+        "signals": {c: g.to_dict("records") for c, g in res.pre_breakout.groupby("condition")}
+        if not res.pre_breakout.empty else {},
         "model": res.model_summary,
         "importance": res.model_importance.head(10).to_dict("records") if not res.model_importance.empty else [],
     }

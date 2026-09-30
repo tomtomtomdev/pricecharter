@@ -62,3 +62,8 @@ def test_curve_shapes_section(result, tmp_path):
     assert "Curve shapes" in html and 'id="cluster-chart"' in html
     blob = re.search(r'<script id="chart-data" type="application/json">(.*?)</script>', html, re.S).group(1)
     assert len(json.loads(blob)["clusters"]) == 5
+
+
+def test_before_jumps_section(result, tmp_path):
+    html = render_report(result, tmp_path / "r.html").read_text()
+    assert "Before the jumps" in html and "cib_loose_change_12m" in html
