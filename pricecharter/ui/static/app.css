@@ -80,3 +80,4 @@ td.nowrap { white-space: nowrap; }
 .tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 .tabs a:hover { text-decoration: none; color: var(--text); }
 td.examples { font-size: 13px; min-width: 16em; }
+.examples code { display: inline-block; margin: 1px 0; }

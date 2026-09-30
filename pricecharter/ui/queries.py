@@ -205,3 +205,32 @@ def movers(conn: sqlite3.Connection, console: str, cond: str, n: int = 15, risin
             ORDER BY sm.excess_36m {'DESC' if rising else 'ASC'} LIMIT ?""",
         (console, cond, n),
     )]
+
+
+WATCH_SORTS = {"score": "w.score DESC", "price": "w.price_cents DESC", "name": "w.name COLLATE NOCASE",
+               "model": "w.model_pred DESC NULLS LAST"}
+
+
+def watchlist(
+    conn: sqlite3.Connection, cond: str = "loose", console: str | None = None, sort: str = "score",
+) -> list[dict] | None:
+    """Titles matching rising patterns, from the latest analysis; None if it hasn't run."""
+    if not table_exists(conn, "watchlist"):
+        return None
+    params: list = [cond]
+    where = "w.condition = ?"
+    if console:
+        where += " AND w.console = ?"
+        params.append(console)
+    rows = [dict(r) for r in conn.execute(
+        f"SELECT w.* FROM watchlist w WHERE {where} ORDER BY {WATCH_SORTS[sort]}, w.game_id", params)]
+    for r in rows:
+        r["patterns"] = [p.strip() for p in (r.get("matched") or "").split(" | ") if p.strip()]
+    return rows
+
+
+def watchlist_consoles(conn: sqlite3.Connection) -> list[str]:
+    if not table_exists(conn, "watchlist"):
+        return []
+    vals = [r[0] for r in conn.execute("SELECT DISTINCT console FROM watchlist")]
+    return sorted(vals, key=lambda v: (_ORDER.get(v, len(_ORDER)), v))

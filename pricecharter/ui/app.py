@@ -126,6 +126,18 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             "cluster_lines": report.cluster_traces(res.cluster_summary) if not res.cluster_summary.empty else [],
         })
 
+    @app.get("/watchlist")
+    def watchlist(
+        request: Request, conn: Conn, cond: Literal["loose", "cib", "new"] = "loose", console: str = "",
+        sort: Literal["score", "price", "name", "model"] = "score",
+    ):
+        rows = queries.watchlist(conn, cond=cond, console=console or None, sort=sort)
+        return templates.TemplateResponse(request, "watchlist.html", {
+            "rows": rows, "cond": cond, "console": console, "sort": sort,
+            "consoles": queries.watchlist_consoles(conn),
+            "has_model": bool(rows) and any(r["model_pred"] is not None for r in rows),
+        })
+
     @app.get("/report", response_class=HTMLResponse)
     def full_report(conn: Conn):
         res = _stored(app, conn)

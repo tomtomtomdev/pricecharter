@@ -78,7 +78,7 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
 - [x] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;
       `analysis/stored.py` rebuilds the result from persisted tables and feeds `report.context()` (report output
       byte-identical, tested); `/report` serves the full static report.
-- [ ] **U8 Watchlist `/watchlist`** — sortable table linking to game pages, filter by console/condition.
+- [x] **U8 Watchlist `/watchlist`** — sortable table linking to game pages, filter by console/condition.
 - [ ] **U9 Compare `/compare?ids=…`** — overlay up to 6 titles, raw price or rebased to 100 / vs console index;
       "add to compare" from browse and game pages.
 - [ ] **U10 Ship** — `./run.sh serve` (no Chrome check for `serve`/`analyze`), README section, CI runs UI tests.

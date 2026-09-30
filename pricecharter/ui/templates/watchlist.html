@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %} · watchlist{% endblock %}
+{% block content %}
+<h1>Watchlist</h1>
+{% if rows is none %}
+<p class="muted">No analysis yet — run <code>./run.sh analyze</code>, then reload.</p>
+{% else %}
+<p class="muted">Titles whose traits today match the rising patterns{% if has_model %}, combined with the model's forecast{% endif %}.
+  A screen for further research, not a price forecast.</p>
+<form class="filters" method="get">
+  <select name="cond" aria-label="condition" onchange="this.form.submit()">
+    {% for c in ["loose", "cib", "new"] %}<option {% if cond == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="console" aria-label="console" onchange="this.form.submit()">
+    <option value="">All consoles</option>
+    {% for c in consoles %}<option {% if console == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="sort" aria-label="sort" onchange="this.form.submit()">
+    {% for v, label in [("score", "Score"), ("price", "Price"), ("name", "Name")] + ([("model", "Model forecast")] if has_model else []) %}
+    <option value="{{ v }}" {% if sort == v %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button>Apply</button></noscript>
+</form>
+<p class="muted">{{ rows|length }} titles</p>
+{% if rows %}
+<div class="scroll"><table class="games">
+  <thead><tr><th>Title</th><th>Console</th><th>Genre</th><th>Publisher</th><th class="num">Price</th><th class="num">Score</th>
+    {% if has_model %}<th class="num" title="model forecast of excess return over the analysis window">Forecast</th>{% endif %}<th>Matches</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><a href="/games/{{ r.game_id }}">{{ r.name }}</a>{% if r.already_rising == 1 %} <span class="badge up" title="already labeled rising">▲</span>{% endif %}</td>
+      <td class="muted nowrap">{{ r.console }}</td><td>{{ r.genre or "" }}</td><td class="muted">{{ r.publisher or "" }}</td>
+      <td class="num">{{ r.price_cents|usd }}</td><td class="num">{{ "%.2f"|format(r.score) }}</td>
+      {% if has_model %}<td class="num">{{ r.model_pred|logpct }}</td>{% endif %}
+      <td class="examples">{% for p in r.patterns %}<code>{{ p }}</code>{% if not loop.last %} {% endif %}{% endfor %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="muted">▲ = already labeled rising.</p>
+{% else %}
+<p class="muted">Nothing on the watchlist for this filter.</p>
+{% endif %}
+{% endif %}
+{% endblock %}
