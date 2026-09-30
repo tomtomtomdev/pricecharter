@@ -35,11 +35,14 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("--top", type=float, default=0.2, help="share of titles labeled rising per console")
     an.add_argument("--condition", nargs="+", choices=["loose", "cib", "new"], help="default all")
     an.add_argument("--asof", help="analysis end month YYYY-MM-01 (default latest)")
+    an.add_argument("--report", type=Path, help="HTML report path (default reports/analysis-<asof>.html)")
+    an.add_argument("--no-report", action="store_true", help="skip the HTML report")
     return ap
 
 
 def run_analyze(args: argparse.Namespace) -> None:
-    from .analysis.run import analyze, persist  # pandas stack only needed here
+    from .analysis.report import render_report  # pandas stack only needed here
+    from .analysis.run import analyze, persist
 
     conn = db.connect(args.db)
     try:
@@ -59,6 +62,9 @@ def run_analyze(args: argparse.Namespace) -> None:
         print(f"\n[{cond}] top patterns")
         for r in grp.head(10).itertuples():
             print(f"  {r.items:<60} {r.lift:4.2f}x  >={r.lift_lo:4.2f}x  n={r.n}")
+    if not args.no_report:
+        path = render_report(res, args.report or Path("reports") / f"analysis-{p['asof']}.html")
+        print(f"\nreport: {path.resolve()}")
 
 
 async def run(args: argparse.Namespace) -> None:

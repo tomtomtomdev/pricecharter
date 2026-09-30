@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rising Price Patterns</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --border: #e4e2dd;
+    --accent: #2f6fdb; --good: #1f8a4c; --grid: #ecebe7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --surface: #1c1c1f; --text: #ececee; --muted: #9a9aa2; --border: #2e2e33;
+      --accent: #6c9cf0; --good: #4cc584; --grid: #2a2a2e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141416; --surface: #1c1c1f; --text: #ececee; --muted: #9a9aa2; --border: #2e2e33;
+    --accent: #6c9cf0; --good: #4cc584; --grid: #2a2a2e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; margin: 40px 0 8px; }
+  h3 { font-size: 15px; margin: 20px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .chart { width: 100%; height: 380px; }
+  .tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .tabs button { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+                 border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lift { color: var(--good); font-weight: 600; }
+  .ex { color: var(--muted); font-size: 13px; }
+  code { font-size: 13px; }
+  ul.caveats li { margin-bottom: 6px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Rising price patterns</h1>
+  <p class="sub">As of {{ p.asof }} · {{ p.window }}-month excess return vs console index · top {{ (p.top * 100) | round | int }}% labeled rising</p>
+
+  <div class="stats">
+    <div class="stat"><b>{{ consoles | length }}</b><span>consoles</span></div>
+    <div class="stat"><b>{{ "{:,}".format(p.n_series) }}</b><span>price series</span></div>
+    <div class="stat"><b>{{ "{:,}".format(p.n_labeled) }}</b><span>with enough history</span></div>
+    <div class="stat"><b>{{ p.min_support }}</b><span>min titles per factor</span></div>
+  </div>
+
+  <div class="tabs" role="group" aria-label="Condition">
+    {% for c in conditions %}<button type="button" data-cond="{{ c }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ c | upper if c == 'cib' else c | capitalize }}</button>{% endfor %}
+  </div>
+
+  <h2>Console price index</h2>
+  <p class="sub">Cumulative median change across each console's titles (%). Rising is measured relative to these lines.</p>
+  <div class="card"><div id="index-chart" class="chart"></div></div>
+
+  <h2>Top rising factors</h2>
+  <p class="sub">How much more often titles with this trait landed in the rising group than the baseline. Bars show the 95% range; only traits whose lower bound beats 1× are listed.</p>
+  <div class="card"><div id="factor-chart" class="chart"></div></div>
+  {% for c in conditions %}
+  <div class="scroll" data-panel="{{ c }}" {% if not loop.first %}hidden{% endif %}>
+    <table>
+      <thead><tr><th>Factor</th><th class="num">Lift</th><th class="num">95% range</th><th class="num">Rising / titles</th></tr></thead>
+      <tbody>
+      {% for f in factors.get(c, []) %}
+        <tr><td><code>{{ f.factor }}={{ f.value }}</code></td>
+            <td class="num lift">{{ "%.2f" | format(f.lift) }}×</td>
+            <td class="num">{{ "%.2f" | format(f.lift_lo) }}–{{ "%.2f" | format(f.lift_hi) }}×</td>
+            <td class="num">{{ f.risers }} / {{ f.n }}</td></tr>
+      {% else %}<tr><td colspan="4">No factor clears the bar for this condition.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+  <h2>Rising patterns</h2>
+  <p class="sub">Combinations of up to three traits, ranked by the conservative (lower-bound) lift. A combination is shown only if it beats each of its parts.</p>
+  {% for c in conditions %}
+  <div class="scroll" data-panel="{{ c }}" {% if not loop.first %}hidden{% endif %}>
+    <table>
+      <thead><tr><th>Pattern</th><th class="num">Lift</th><th class="num">≥ (95%)</th><th class="num">Rising / titles</th><th>Examples</th></tr></thead>
+      <tbody>
+      {% for r in patterns.get(c, []) %}
+        <tr><td><code>{{ r['items'] }}</code></td>
+            <td class="num lift">{{ "%.2f" | format(r.lift) }}×</td>
+            <td class="num">{{ "%.2f" | format(r.lift_lo) }}×</td>
+            <td class="num">{{ r.risers }} / {{ r.n }}</td>
+            <td class="ex">{{ r.examples | join(" · ") }}</td></tr>
+      {% else %}<tr><td colspan="5">No pattern clears the bar for this condition.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+  {% block extra_sections %}{% endblock %}
+
+  <h2>Caveats</h2>
+  <ul class="caveats">
+    <li><b>Correlation, not cause.</b> A pattern says these titles tended to rise, not why.</li>
+    <li><b>Smoothed input.</b> PriceCharting's monthly chart values are already smoothed; short spikes are understated.</li>
+    <li><b>Survivorship.</b> Only titles currently listed (variants and hardware excluded) are included.</li>
+    <li><b>Thin CIB/New history</b> for many titles makes those conditions noisier.</li>
+    <li><b>Sales activity</b> comes from the most recent ~30 sold listings per condition, so it reflects the present.</li>
+  </ul>
+</main>
+
+<script id="chart-data" type="application/json">{{ chart_json | safe }}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js"></script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById("chart-data").textContent);
+  var css = getComputedStyle(document.documentElement);
+  function v(n) { return css.getPropertyValue(n).trim(); }
+  function layout(extra) {
+    return Object.assign({
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: v("--text"), family: "system-ui, sans-serif", size: 12 },
+      margin: { l: 56, r: 16, t: 8, b: 40 },
+      xaxis: { gridcolor: v("--grid"), zerolinecolor: v("--border") },
+      yaxis: { gridcolor: v("--grid"), zerolinecolor: v("--border") },
+      legend: { orientation: "h", y: -0.18 }, hovermode: "closest"
+    }, extra || {});
+  }
+  var config = { displaylogo: false, responsive: true };
+  function draw(cond) {
+    if (!window.Plotly) return;
+    var idx = (data.index[cond] || []).map(function (t) {
+      return { type: "scatter", mode: "lines", name: t.name, x: t.x, y: t.y, line: { width: 1.6 },
+               hovertemplate: "%{x|%b %Y}: %{y:.1f}%<extra>" + t.name + "</extra>" };
+    });
+    Plotly.react("index-chart", idx, layout({ yaxis: { title: "% since start", gridcolor: v("--grid") } }), config);
+    var f = data.factors[cond] || { labels: [], lift: [], lo: [], hi: [], n: [] };
+    Plotly.react("factor-chart", [{
+      type: "bar", orientation: "h", y: f.labels, x: f.lift, marker: { color: v("--accent") },
+      error_x: { type: "data", symmetric: false, color: v("--muted"),
+                 array: f.hi.map(function (h, i) { return h - f.lift[i]; }),
+                 arrayminus: f.lo.map(function (l, i) { return f.lift[i] - l; }) },
+      customdata: f.n, hovertemplate: "%{y}: %{x:.2f}× (n=%{customdata})<extra></extra>"
+    }], layout({ margin: { l: 220, r: 16, t: 8, b: 40 }, showlegend: false,
+                 xaxis: { title: "lift vs baseline (×)", gridcolor: v("--grid") },
+                 shapes: [{ type: "line", x0: 1, x1: 1, yref: "paper", y0: 0, y1: 1,
+                            line: { color: v("--muted"), dash: "dot" } }] }), config);
+  }
+  var buttons = document.querySelectorAll(".tabs button");
+  function select(cond) {
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.cond === cond ? "true" : "false"); });
+    document.querySelectorAll("[data-panel]").forEach(function (el) { el.hidden = el.dataset.panel !== cond; });
+    draw(cond);
+  }
+  buttons.forEach(function (b) { b.addEventListener("click", function () { select(b.dataset.cond); }); });
+  if (buttons.length) select(buttons[0].dataset.cond);
+})();
+</script>
+</body>
+</html>
