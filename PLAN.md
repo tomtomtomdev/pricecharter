@@ -13,9 +13,9 @@ monthly price charts to find what rising titles have in common.
 | Storage | SQLite (stdlib `sqlite3`, WAL) | single file, zero ops, fast enough for ~100k titles |
 | Scheduling | macOS `launchd` LaunchAgent | headed Chrome needs the logged-in GUI session; cron/cloud can't |
 | Analysis | pandas + numpy, scipy | series math, stats |
-| Patterns | mlxtend (FP-growth) | frequent factor-combination mining |
+| Patterns | own level-wise itemset counting on a pandas boolean matrix | mlxtend drags in matplotlib; ≤3-item rules are a few lines |
 | Model | scikit-learn `HistGradientBoostingRegressor` + permutation importance, `KMeans` | no libomp/LightGBM native install; importance without SHAP |
-| Report | Jinja2 + Plotly (single static HTML) | shareable file, interactive charts |
+| Report | Jinja2 + Plotly.js from CDN (single static HTML) | shareable file, interactive charts, no Python plotting dep |
 | Quality | pytest (TDD), ruff, GitHub Actions CI | every slice ends green |
 
 ## Slice workflow
@@ -40,7 +40,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 
 ### Analysis (`pricecharter analyze`)
 
-- [ ] **A1 Loader** — analysis deps group, load `price_history` + `games` into pandas; synthetic test DB builder.
+- [x] **A1 Loader** — analysis deps group, load `price_history` + `games` into pandas; synthetic test DB builder.
 - [ ] **A2 Console index** — median monthly log-return per console × condition.
 - [ ] **A3 Series metrics** — excess return (1y/3y/5y/all), log slope, volatility, max drawdown,
       biggest-jump month → `series_metrics`.
@@ -48,7 +48,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [ ] **A5 Factors** — region, platform, genre, publisher, release year, lifecycle position,
       franchise/keyword tokens, price bucket, CIB/Loose & New/CIB ratios, sales liquidity.
 - [ ] **A6 Factor lift** — rise rate vs baseline, lift, Wilson CI, min support → `factor_lift`.
-- [ ] **A7 Patterns** — FP-growth over discretized factors ⇒ rising rules (support, confidence, lift) → `patterns`.
+- [ ] **A7 Patterns** — frequent itemsets (≤3 factors) over discretized factors ⇒ rising rules (support, confidence, lift) → `patterns`.
 - [ ] **A8 CLI + persistence** — `pricecharter analyze` writes tables + `analysis_runs`.
 - [ ] **A9 Report** — HTML: console indices, top factors, top patterns with example titles.
 - [ ] **A10 Model** — time-split HistGB on excess return, baseline comparison, permutation importance → `model_importance`.

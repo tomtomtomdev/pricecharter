@@ -12,6 +12,13 @@ dependencies = [
 pricecharter = "pricecharter.cli:main"
 
 [dependency-groups]
+analysis = [
+    "jinja2>=3.1",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+    "scipy>=1.13",
+]
 dev = [
     "pytest>=8",
     "ruff>=0.16.9",
@@ -30,3 +37,6 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv]
+default-groups = ["dev", "analysis"]
