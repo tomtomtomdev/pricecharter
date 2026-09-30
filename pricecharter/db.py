@@ -98,18 +98,35 @@ def save_detail(conn: sqlite3.Connection, game_id: int, detail: dict, day: str) 
     )
 
 
-def games_due(conn: sqlite3.Connection, console: str, stale_days: float, limit: int | None) -> list[sqlite3.Row]:
-    sql = """
+def games_due(
+    conn: sqlite3.Connection, consoles: list[str], stale_days: float, limit: int | None
+) -> list[sqlite3.Row]:
+    """Never-fetched games first (by list rank), then the stalest, across all given consoles."""
+    marks = ",".join("?" * len(consoles))
+    sql = f"""
         SELECT id, console, slug, name FROM games
-        WHERE console = ?
+        WHERE console IN ({marks})
           AND (last_detail_at IS NULL OR last_detail_at < datetime('now', ?))
-        ORDER BY last_detail_at IS NOT NULL, list_rank
+        ORDER BY last_detail_at IS NOT NULL, last_detail_at, list_rank, id
     """
-    params: list = [console, f"-{stale_days} days"]
+    params: list = [*consoles, f"-{stale_days} days"]
     if limit:
         sql += " LIMIT ?"
         params.append(limit)
     return conn.execute(sql, params).fetchall()
+
+
+def list_fresh(conn: sqlite3.Connection, console: str, hours: float) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1 FROM crawl_runs
+        WHERE stage = 'list' AND console = ? AND error IS NULL AND ok > 0
+          AND finished_at >= datetime('now', ?)
+        LIMIT 1
+        """,
+        (console, f"-{hours} hours"),
+    ).fetchone()
+    return row is not None
 
 
 def start_run(conn: sqlite3.Connection, stage: str, console: str) -> int:

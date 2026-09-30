@@ -6,7 +6,7 @@ from playwright.async_api import Page
 from . import BASE_URL, db
 from .browser import is_challenge, wait_past_challenge
 from .parse import parse_detail, parse_list_product, today
-from .throttle import Throttle
+from .throttle import DeadlineReached, Throttle
 
 MAX_RETRIES = 6
 
@@ -92,32 +92,39 @@ async def _load_detail(page: Page, throttle: Throttle, url: str) -> str:
 
 
 async def crawl_details(
-    page: Page, conn: sqlite3.Connection, throttle: Throttle, console: str,
+    page: Page, conn: sqlite3.Connection, throttle: Throttle, consoles: list[str],
     stale_days: float, limit: int | None,
 ) -> tuple[int, int]:
-    games = db.games_due(conn, console, stale_days, limit)
-    run = db.start_run(conn, "details", console)
+    games = db.games_due(conn, consoles, stale_days, limit)
+    run = db.start_run(conn, "details", ",".join(consoles))
     ok = failed = 0
     day = today()
-    print(f"[{console}] {len(games)} games need details")
-    for i, g in enumerate(games, 1):
-        url = f"{BASE_URL}/game/{g['console']}/{g['slug']}"
-        try:
-            detail = parse_detail(await _load_detail(page, throttle, url))
-            if detail["pc_id"] and detail["pc_id"] != g["id"]:
-                raise ValueError(f"id mismatch: page {detail['pc_id']} vs db {g['id']}")
-            db.save_detail(conn, g["id"], detail, day)
-            conn.commit()
-            ok += 1
-            h, s = detail["history"], detail["sales"]
-            print(
-                f"[{console}] {i}/{len(games)} {g['name']}: "
-                f"history L{len(h['loose'])}/C{len(h['cib'])}/N{len(h['new'])} "
-                f"sales L{len(s['loose'])}/C{len(s['cib'])}/N{len(s['new'])}"
-            )
-        except Exception as e:
-            conn.rollback()
-            failed += 1
-            print(f"[{console}] {i}/{len(games)} FAILED {url}: {e!r}")
+    print(f"[details] {len(games)} games due across {len(consoles)} consoles")
+    try:
+        for i, g in enumerate(games, 1):
+            url = f"{BASE_URL}/game/{g['console']}/{g['slug']}"
+            tag = f"[{g['console']}] {i}/{len(games)}"
+            try:
+                detail = parse_detail(await _load_detail(page, throttle, url))
+                if detail["pc_id"] and detail["pc_id"] != g["id"]:
+                    raise ValueError(f"id mismatch: page {detail['pc_id']} vs db {g['id']}")
+                db.save_detail(conn, g["id"], detail, day)
+                conn.commit()
+                ok += 1
+                h, s = detail["history"], detail["sales"]
+                print(
+                    f"{tag} {g['name']}: "
+                    f"history L{len(h['loose'])}/C{len(h['cib'])}/N{len(h['new'])} "
+                    f"sales L{len(s['loose'])}/C{len(s['cib'])}/N{len(s['new'])}"
+                )
+            except DeadlineReached:
+                raise
+            except Exception as e:
+                conn.rollback()
+                failed += 1
+                print(f"{tag} FAILED {url}: {e!r}")
+    except DeadlineReached as e:
+        db.finish_run(conn, run, ok, failed, f"deadline: {e}")
+        raise
     db.finish_run(conn, run, ok, failed)
     return ok, failed

@@ -1,5 +1,10 @@
 import asyncio
 import time
+from datetime import datetime
+
+
+class DeadlineReached(Exception):
+    """The crawl window closed; stop cleanly."""
 
 
 class Throttle:
@@ -9,8 +14,11 @@ class Throttle:
     every `recover_after` consecutive successes shrink it back toward the floor.
     """
 
-    def __init__(self, base: float = 1.0, ceiling: float = 15.0, recover_after: int = 25):
+    def __init__(
+        self, base: float = 1.0, ceiling: float = 15.0, recover_after: int = 25, deadline: datetime | None = None
+    ):
         self.base = self.interval = base
+        self.deadline = deadline
         self.ceiling = ceiling
         self.recover_after = recover_after
         self._streak = 0
@@ -18,6 +26,8 @@ class Throttle:
         self._lock = asyncio.Lock()
 
     async def wait(self) -> None:
+        if self.deadline and datetime.now() >= self.deadline:
+            raise DeadlineReached(f"crawl window closed at {self.deadline:%Y-%m-%d %H:%M}")
         async with self._lock:
             delay = self._last + self.interval - time.monotonic()
             if delay > 0:
@@ -38,6 +48,8 @@ class Throttle:
         except ValueError:
             pause = 0.0
         pause = max(pause, min(600.0, 30.0 * 2**attempt))
+        if self.deadline:
+            pause = max(0.0, min(pause, (self.deadline - datetime.now()).total_seconds()))
         print(f"   rate limited: pausing {pause:.0f}s, interval now {self.interval:.1f}s")
         await asyncio.sleep(pause)
 

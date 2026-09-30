@@ -42,3 +42,36 @@ def test_upsert_list_game_sets_region(tmp_path):
     db.upsert_list_game(conn, g, 1, "2026-09-30")
     r = conn.execute("SELECT platform, region FROM games WHERE id = 7").fetchone()
     assert tuple(r) == ("psp", "ntsc-j")
+
+
+def _game(conn, id, console, rank, detail_at=None):
+    db.upsert_list_game(conn, {"id": id, "console": console, "slug": f"g{id}", "name": f"G{id}", "image_url": None},
+                        rank, "2026-09-30")
+    if detail_at:
+        conn.execute("UPDATE games SET last_detail_at = ? WHERE id = ?", (detail_at, id))
+
+
+def test_games_due_across_consoles_never_fetched_first(tmp_path):
+    conn = db.connect(tmp_path / "x.db")
+    _game(conn, 1, "nes", 1, "2026-01-01 00:00:00")   # stale
+    _game(conn, 2, "nes", 2)                           # never
+    _game(conn, 3, "pal-nes", 1)                       # never
+    _game(conn, 4, "pal-nes", 2, "2025-01-01 00:00:00")  # older stale
+    _game(conn, 5, "famicom", 1)                       # not selected
+    due = [r["id"] for r in db.games_due(conn, ["nes", "pal-nes"], stale_days=7, limit=None)]
+    assert due == [3, 2, 4, 1]
+    assert [r["id"] for r in db.games_due(conn, ["nes", "pal-nes"], 7, limit=2)] == [3, 2]
+
+
+def test_list_fresh(tmp_path):
+    conn = db.connect(tmp_path / "x.db")
+    assert not db.list_fresh(conn, "nes", hours=20)
+    run = db.start_run(conn, "list", "nes")
+    db.finish_run(conn, run, 100, 1, "boom")
+    assert not db.list_fresh(conn, "nes", hours=20)       # failed runs don't count
+    run = db.start_run(conn, "list", "nes")
+    db.finish_run(conn, run, 100, 0)
+    assert db.list_fresh(conn, "nes", hours=20)
+    assert not db.list_fresh(conn, "pal-nes", hours=20)
+    conn.execute("UPDATE crawl_runs SET finished_at = datetime('now', '-21 hours')")
+    assert not db.list_fresh(conn, "nes", hours=20)

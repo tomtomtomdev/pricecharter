@@ -19,7 +19,12 @@ each crawled in three regions (48 console pages): `-r ntsc-u pal ntsc-j` (defaul
 Exact slugs work too, e.g. `-c pal-nes famicom`. Japanese NES/SNES are `famicom`/`super-famicom`.
 
 Options: `--db pricecharter.db`, `--interval 1.0` (min seconds between requests),
-`--stale-days 7` (re-fetch details older than this), `--limit N`, `--release-date YYYY-MM-DD`.
+`--stale-days 7` (re-fetch details older than this), `--limit N` (detail pages this run),
+`--until 23:00` (stop cleanly at that local time), `--list-fresh-hours 20` (skip lists crawled
+recently), `--release-date YYYY-MM-DD`.
+
+Details are prioritized across all selected consoles: never-fetched titles first, then the stalest,
+so a crawl spread over several weekends always makes forward progress.
 
 ## How it works
 

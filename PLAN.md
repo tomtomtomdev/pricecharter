@@ -32,7 +32,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **S1 CI** — ruff config + GitHub Actions running ruff and pytest.
 - [x] **S2 Regions** — 48-console registry (platform × NTSC-U/PAL/NTSC-J), `games.platform`/`games.region`
       with migration for existing DBs, CLI `--region`.
-- [ ] **S3 Crawl window** — `--until HH:MM` graceful stop (handles past-midnight), skip a console's list
+- [x] **S3 Crawl window** — `--until HH:MM` graceful stop (handles past-midnight), skip a console's list
       if crawled within `--list-fresh-hours`.
 - [ ] **S4 Weekend schedule** — launchd plist generator + `schedule.sh install|uninstall|status`;
       Sat & Sun 01:00 start, stops 23:00.
