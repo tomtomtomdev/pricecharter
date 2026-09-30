@@ -16,6 +16,8 @@ monthly price charts to find what rising titles have in common.
 | Patterns | own level-wise itemset counting on a pandas boolean matrix | mlxtend drags in matplotlib; ≤3-item rules are a few lines |
 | Model | scikit-learn `HistGradientBoostingRegressor` + permutation importance, `KMeans` | no libomp/LightGBM native install; importance without SHAP |
 | Report | Jinja2 + Plotly.js from CDN (single static HTML) | shareable file, interactive charts, no Python plotting dep |
+| Web UI | FastAPI + Jinja2 + HTMX (CDN), uvicorn, served on 127.0.0.1 | server-rendered, no JS build; reuses report templates/Plotly |
+| UI data access | stdlib `sqlite3`, read-only URI (`mode=ro`) per request | safe to browse while the weekend crawl writes (WAL) |
 | Quality | pytest (TDD), ruff, GitHub Actions CI | every slice ends green |
 
 ## Slice workflow
@@ -55,3 +57,27 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **A11 Curve shapes** — KMeans on normalized curves, profile clusters by factors → `curve_clusters`.
 - [x] **A12 Pre-breakout signals** — what changed 6–12 months before the biggest jumps.
 - [x] **A13 Watchlist** — current titles best matching rising patterns, in the report.
+
+### Web UI (`pricecharter serve`)
+
+Local browser over the crawled DB + latest analysis tables. Every page works before `analyze` has ever run
+(analysis sections just say so). Tests use `fastapi.testclient` against the synthetic DB in `tests/analysis/synth.py`.
+
+- [ ] **U1 Skeleton** — `ui` dependency group (fastapi, uvicorn, httpx), `pricecharter/ui/app.py` `create_app(db_path)`,
+      read-only connection per request, base layout, `pricecharter serve --host 127.0.0.1 --port 8000`;
+      test: app boots on synth DB and a write through its connection fails.
+- [ ] **U2 Dashboard `/`** — per-console coverage (listed, detail-fetched, stale > `--stale-days`, with history),
+      recent `crawl_runs` (ok/failed/error), last `analysis_runs` row.
+- [ ] **U3 Browse `/games`** — name search, filters (platform, region, console, genre), sort (current price, list rank,
+      name, 3y excess return when available), pagination; HTMX partial for live search.
+- [ ] **U4 Game page `/games/{id}`** — metadata + image, latest loose/CIB/new, Plotly monthly history (log toggle),
+      recent sales table, link back to PriceCharting; 404 for unknown id.
+- [ ] **U5 Analysis on game page** — console index overlay, `series_metrics` (excess returns, drawdown, biggest jump),
+      rising label, curve cluster, watchlist membership; hidden when tables are missing.
+- [ ] **U6 Console page `/consoles/{slug}`** — index chart per condition, top risers/fallers by excess return, coverage.
+- [ ] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;
+      extract the chart/table builders from `analysis/report.py` into a shared module (report output unchanged).
+- [ ] **U8 Watchlist `/watchlist`** — sortable table linking to game pages, filter by console/condition.
+- [ ] **U9 Compare `/compare?ids=…`** — overlay up to 6 titles, raw price or rebased to 100 / vs console index;
+      "add to compare" from browse and game pages.
+- [ ] **U10 Ship** — `./run.sh serve` (no Chrome check for `serve`/`analyze`), README section, CI runs UI tests.
