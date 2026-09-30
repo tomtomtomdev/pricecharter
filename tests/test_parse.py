@@ -54,3 +54,9 @@ def test_parse_detail():
     assert cib["url"].startswith("https://www.ebay.com/itm/133142289558")
     assert s["new"][0]["source"] == "goldin"
     assert len({x["sale_id"] for x in s["cib"]}) == len(s["cib"])
+
+
+def test_esrb_rating():
+    assert parse_detail(FIXTURE.read_text())["details"]["esrb"] is None  # page says "none"
+    html = '<table id="attribute"><tr><td class="title">ESRB Rating:</td><td class="details"> Teen </td></tr></table>'
+    assert parse_detail(html)["details"]["esrb"] == "Teen"

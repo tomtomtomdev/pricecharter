@@ -75,3 +75,11 @@ def test_list_fresh(tmp_path):
     assert not db.list_fresh(conn, "pal-nes", hours=20)
     conn.execute("UPDATE crawl_runs SET finished_at = datetime('now', '-21 hours')")
     assert not db.list_fresh(conn, "nes", hours=20)
+
+
+def test_save_detail_stores_esrb(tmp_path):
+    conn = db.connect(tmp_path / "x.db")
+    _game(conn, 1, "nes", 1)
+    detail = {"details": {"esrb": "Everyone"}, "current": {}, "history": {}, "sales": {}}
+    db.save_detail(conn, 1, detail, "2026-09-30")
+    assert conn.execute("SELECT esrb FROM games WHERE id = 1").fetchone()[0] == "Everyone"

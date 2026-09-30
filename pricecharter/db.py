@@ -7,7 +7,7 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 # Columns added after the first release; connect() adds any that an older DB lacks.
 ADDED_COLUMNS = {
-    "games": {"platform": "TEXT", "region": "TEXT"},
+    "games": {"platform": "TEXT", "region": "TEXT", "esrb": "TEXT"},
 }
 
 
@@ -64,13 +64,13 @@ def save_detail(conn: sqlite3.Connection, game_id: int, detail: dict, day: str) 
     d = detail["details"]
     conn.execute(
         """
-        UPDATE games SET genre = :genre, release_date = :release_date, publisher = :publisher,
+        UPDATE games SET genre = :genre, esrb = :esrb, release_date = :release_date, publisher = :publisher,
             developer = :developer, model_number = :model_number, player_count = :player_count,
             upc = :upc, asin = :asin, epid = :epid, last_detail_at = datetime('now')
         WHERE id = :id
         """,
         {k: d.get(k) for k in (
-            "genre", "release_date", "publisher", "developer", "model_number",
+            "genre", "esrb", "release_date", "publisher", "developer", "model_number",
             "player_count", "upc", "asin", "epid",
         )} | {"id": game_id},
     )

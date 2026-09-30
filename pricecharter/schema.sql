@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS games (
     name            TEXT NOT NULL,
     image_url       TEXT,
     genre           TEXT,
+    esrb            TEXT,
     release_date    TEXT,                         -- ISO date
     publisher       TEXT,
     developer       TEXT,

@@ -79,6 +79,7 @@ def parse_chart_data(html: str) -> dict[str, list[tuple[str, int]]]:
 DETAIL_FIELDS = {
     "Genre:": "genre",
     "Release Date:": "release_date",
+    "ESRB Rating:": "esrb",
     "Publisher:": "publisher",
     "Developer:": "developer",
     "Model Number:": "model_number",

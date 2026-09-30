@@ -36,7 +36,7 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
       if crawled within `--list-fresh-hours`.
 - [x] **S4 Weekend schedule** — launchd plist generator + `schedule.sh install|uninstall|status`;
       Sat & Sun 01:00 start, stops 23:00.
-- [ ] **S5 ESRB** — parse & store ESRB rating.
+- [x] **S5 ESRB** — parse & store ESRB rating.
 
 ### Analysis (`pricecharter analyze`)
 
