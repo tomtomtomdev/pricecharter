@@ -16,3 +16,14 @@ def ui_db(tmp_path_factory):
 def client(ui_db):
     with TestClient(create_app(ui_db)) as c:
         yield c
+
+
+@pytest.fixture(scope="session")
+def analyzed_db(tmp_path_factory):
+    from pricecharter.analysis.run import analyze, persist
+
+    path = tmp_path_factory.mktemp("ui-analyzed") / "synth.db"
+    conn = synth.build(path)
+    persist(conn, analyze(conn, model=False))
+    conn.close()
+    return path

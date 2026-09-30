@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="tiles">
+  <div class="tile"><div class="label">Titles listed</div><div class="value">{{ "{:,}".format(totals.listed) }}</div></div>
+  <div class="tile"><div class="label">Details fetched</div><div class="value">{{ "{:,}".format(totals.fetched) }}</div>
+    <div class="muted">{{ totals.never }} never · {{ totals.stale }} older than {{ stale_days|int }}d</div></div>
+  <div class="tile"><div class="label">With price history</div><div class="value">{{ "{:,}".format(totals.with_history) }}</div></div>
+  <div class="tile"><div class="label">Last analysis</div>
+    {% if analysis %}
+      <div class="value">{{ analysis.asof }}</div>
+      <div class="muted">run {{ analysis.ran_at }} · {{ analysis.n_series }} series · {{ analysis.window }}m window</div>
+    {% else %}
+      <div class="value muted">—</div><div class="muted">No analysis yet — run <code>./run.sh analyze</code></div>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Coverage by console</h2>
+{% if coverage %}
+<div class="scroll"><table>
+  <thead><tr><th>Console</th><th>Platform</th><th>Region</th><th class="num">Listed</th><th class="num">Fetched</th>
+    <th class="num">Never</th><th class="num">Stale</th><th class="num">History</th><th>Last detail (UTC)</th></tr></thead>
+  <tbody>
+  {% for r in coverage %}
+    <tr>
+      <td>{{ r.console }}</td><td>{{ r.platform or "" }}</td><td>{{ r.region or "" }}</td>
+      <td class="num">{{ r.listed }}</td>
+      <td class="num">{{ r.fetched }} <span class="muted">({{ (100 * r.fetched / r.listed)|round|int }}%)</span></td>
+      <td class="num">{{ r.never }}</td><td class="num">{{ r.stale }}</td><td class="num">{{ r.with_history }}</td>
+      <td class="muted">{{ r.last_detail_at or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p class="muted">Nothing crawled yet — run <code>./run.sh</code>.</p>
+{% endif %}
+
+<h2>Recent crawl runs</h2>
+{% if runs %}
+<div class="scroll"><table>
+  <thead><tr><th>Started (UTC)</th><th>Stage</th><th>Console</th><th class="num">OK</th><th class="num">Failed</th>
+    <th>Finished</th><th>Error</th></tr></thead>
+  <tbody>
+  {% for r in runs %}
+    <tr>
+      <td>{{ r.started_at }}</td><td>{{ r.stage }}</td><td>{{ r.console }}</td>
+      <td class="num">{{ r.ok }}</td><td class="num {% if r.failed %}bad{% endif %}">{{ r.failed }}</td>
+      <td class="muted">{{ r.finished_at or "running" }}</td><td class="bad">{{ r.error or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p class="muted">No crawl runs recorded.</p>
+{% endif %}
+{% endblock %}

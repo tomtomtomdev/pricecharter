@@ -66,7 +66,7 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
 - [x] **U1 Skeleton** — `ui` dependency group (fastapi, uvicorn, httpx2), `pricecharter/ui/app.py` `create_app(db_path)`,
       read-only connection per request, base layout, `pricecharter serve --host 127.0.0.1 --http-port 8000` (`--port` is Chrome's CDP port);
       test: app boots on synth DB and a write through its connection fails.
-- [ ] **U2 Dashboard `/`** — per-console coverage (listed, detail-fetched, stale > `--stale-days`, with history),
+- [x] **U2 Dashboard `/`** — per-console coverage (listed, detail-fetched, stale > `--stale-days`, with history),
       recent `crawl_runs` (ok/failed/error), last `analysis_runs` row.
 - [ ] **U3 Browse `/games`** — name search, filters (platform, region, console, genre), sort (current price, list rank,
       name, 3y excess return when available), pagination; HTMX partial for live search.

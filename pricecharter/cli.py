@@ -50,7 +50,8 @@ def run_serve(args: argparse.Namespace) -> None:
     from .ui.app import create_app
 
     print(f"pricecharter UI on http://{args.host}:{args.http_port} (db {args.db.resolve()})")
-    uvicorn.run(create_app(args.db), host=args.host, port=args.http_port, log_level="warning")
+    app = create_app(args.db, stale_days=args.stale_days)
+    uvicorn.run(app, host=args.host, port=args.http_port, log_level="warning")
 
 
 def run_analyze(args: argparse.Namespace) -> None:
