@@ -76,7 +76,40 @@ function initPriceChart(el) {
   return draw;
 }
 
+// Horizontal lift bars with the 95% range; 1× reference line = baseline rise rate.
+function drawFactorBars(el, f) {
+  const n = f.labels.length;
+  const trace = {
+    type: "bar", orientation: "h", y: f.labels, x: f.lift, marker: { color: css("--cat-1") },
+    error_x: { type: "data", symmetric: false, array: f.hi.map((h, i) => h - f.lift[i]),
+               arrayminus: f.lift.map((l, i) => l - f.lo[i]), color: css("--muted"), thickness: 1.5, width: 3 },
+    customdata: f.labels.map((_, i) => [f.lo[i], f.hi[i], f.n[i]]),
+    hovertemplate: "<b>%{x:.2f}×</b> (95%: %{customdata[0]:.2f}–%{customdata[1]:.2f}), n=%{customdata[2]}<extra>%{y}</extra>",
+  };
+  const layout = baseLayout({ hovermode: "closest", margin: { l: 8, r: 24, t: 8, b: 36 }, bargap: 0.35, showlegend: false,
+    shapes: [{ type: "line", x0: 1, x1: 1, yref: "paper", y0: 0, y1: 1, line: { color: css("--muted"), dash: "dot", width: 1 } }] });
+  layout.xaxis = { ...layout.xaxis, title: { text: "lift vs baseline (×)", font: { size: 12 } }, showspikes: false, rangemode: "tozero" };
+  layout.yaxis = { ...layout.yaxis, automargin: true, tickfont: { color: css("--text"), family: "ui-monospace, monospace", size: 12 } };
+  Plotly.react(el, [trace], layout, plotConfig);
+  el.style.height = `${80 + 26 * n}px`;
+}
+
+// One line per curve-shape cluster, excess vs index as %, categorical slots in fixed order.
+function drawClusterLines(el, clusters) {
+  const traces = clusters.map((c, i) => ({
+    type: "scatter", mode: "lines", name: c.name, x: c.y.map((_, m) => m), y: c.y.map((v) => (Math.exp(v) - 1) * 100),
+    line: { color: css(`--cat-${i + 1}`), width: 2 }, hovertemplate: "%{y:+.0f}%<extra>%{fullData.name}</extra>",
+  }));
+  const layout = baseLayout({ annotations: endLabels(traces, el, false).map((a) => ({ ...a, text: a.text.replace(/ \(\d+\)$/, "") })),
+    margin: { l: 56, r: 170, t: 8, b: 40 } });
+  layout.xaxis = { ...layout.xaxis, title: { text: "months into window", font: { size: 12 } } };
+  layout.yaxis = { ...layout.yaxis, ticksuffix: "%", zeroline: true, zerolinecolor: css("--border") };
+  Plotly.react(el, traces, layout, plotConfig);
+}
+
 const CHARTS = {
+  factors: (el) => { const d = readJSON(el.dataset.src); return () => drawFactorBars(el, d); },
+  clusters: (el) => { const d = readJSON(el.dataset.src); return () => drawClusterLines(el, d); },
   price: initPriceChart,
   index: (el) => { const data = readJSON(el.dataset.src); return () => drawSeriesChart(el, data, { unit: "%" }); },
 };

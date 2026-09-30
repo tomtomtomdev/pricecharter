@@ -1,0 +1,3 @@
+<nav class="tabs" aria-label="condition">
+  {% for c in conditions %}<a href="?cond={{ c }}" {% if c == cond %}aria-current="page"{% endif %}>{{ c|upper if c == "cib" else c|capitalize }}</a>{% endfor %}
+</nav>

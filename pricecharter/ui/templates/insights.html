@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %} · insights{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js" defer></script>
+<script src="/static/charts.js" defer></script>
+{% endblock %}
+{% block content %}
+<h1>Insights</h1>
+{% if ctx is none %}
+<p class="muted">No analysis yet — run <code>./run.sh analyze</code>, then reload.</p>
+{% else %}
+<p class="muted">As of {{ p.asof }} · {{ p.window }}-month excess return vs console index · top {{ (p.top * 100)|round|int }}%
+  labeled rising · {{ "{:,}".format(p.n_labeled) }} of {{ "{:,}".format(p.n_series) }} series with enough history ·
+  <a href="/report">Full report</a></p>
+{% with conditions = ["loose", "cib", "new"]|select("in", ctx.conditions)|list %}{% include "_cond_tabs.html" %}{% endwith %}
+
+<h2>Top rising factors</h2>
+<p class="muted">How much likelier a title with this trait is to be rising, vs the {{ "%.0f%%"|format(p.base_rate * 100) }} baseline. Bars show the 95% range.</p>
+{% if factor_bars and factor_bars.labels %}
+<div class="chart" data-chart="factors" data-src="factor-bars" role="img" aria-label="Lift of top rising factors"
+     style="height: {{ 80 + 26 * factor_bars.labels|length }}px"></div>
+<script type="application/json" id="factor-bars">{{ factor_bars|tojson }}</script>
+<details class="table-view"><summary>Factors (table)</summary>
+<div class="scroll"><table>
+  <thead><tr><th>Trait</th><th class="num">Titles</th><th class="num">Rising</th><th class="num">Rise rate</th><th class="num">Lift</th><th class="num">95% range</th></tr></thead>
+  <tbody>{% for f in factors %}<tr><td><code>{{ f.factor }}={{ f.value }}</code></td><td class="num">{{ f.n }}</td>
+    <td class="num">{{ f.risers }}</td><td class="num">{{ "%.0f%%"|format(f.rate * 100) }}</td>
+    <td class="num">{{ "%.2f"|format(f.lift) }}×</td><td class="num muted">{{ "%.2f"|format(f.lift_lo) }}–{{ "%.2f"|format(f.lift_hi) }}×</td></tr>{% endfor %}</tbody>
+</table></div></details>
+{% else %}
+<p class="muted">No factor clears its 95% range for this condition.</p>
+{% endif %}
+
+<h2>Rising patterns</h2>
+<p class="muted">Combinations of up to three traits whose titles rise far more often than baseline.</p>
+{% if patterns %}
+<div class="scroll"><table>
+  <thead><tr><th>Traits</th><th class="num">Titles</th><th class="num">Rising</th><th class="num">Lift</th><th>Examples</th></tr></thead>
+  <tbody>{% for r in patterns %}<tr><td><code>{{ r['items'] }}</code></td><td class="num">{{ r.n }}</td>
+    <td class="num">{{ "%.0f%%"|format(r.confidence * 100) }}</td><td class="num">{{ "%.2f"|format(r.lift) }}× <span class="muted">≥{{ "%.2f"|format(r.lift_lo) }}</span></td>
+    <td class="examples">{% for g in r.links %}<a href="/games/{{ g.id }}">{{ g.name }}</a> <span class="muted">{{ g.console }}</span>{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}
+<p class="muted">No patterns found for this condition.</p>
+{% endif %}
+
+<h2>Curve shapes</h2>
+<p class="muted">Clusters of normalized {{ p.window }}-month excess curves (all conditions), with the traits over-represented in each.</p>
+{% if cluster_lines %}
+<div class="chart" data-chart="clusters" data-src="cluster-lines" role="img" aria-label="Average curve per shape cluster"></div>
+<script type="application/json" id="cluster-lines">{{ cluster_lines|tojson }}</script>
+<div class="scroll"><table>
+  <thead><tr><th>Shape</th><th class="num">Series</th><th class="num">Share</th><th class="num">End vs index</th><th>Over-represented traits</th></tr></thead>
+  <tbody>{% for c in ctx.clusters %}<tr><td>{{ c.shape }}</td><td class="num">{{ c.n }}</td><td class="num">{{ "%.0f%%"|format(c.share * 100) }}</td>
+    <td class="num {{ 'up' if c.end > 0 else 'bad' }}">{{ c.end|pct }}</td><td class="muted">{{ c.traits|join(", ") }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}
+<p class="muted">Not enough series to cluster.</p>
+{% endif %}
+
+<h2>Before the breakout</h2>
+<p class="muted">Months just before the biggest 6-month excess moves compared with ordinary months, using only data available at the time. Effect size is Cohen's d (0.2 small, 0.5 medium, 0.8 large).</p>
+{% if signals %}
+<div class="scroll"><table>
+  <thead><tr><th>Signal</th><th class="num">Before breakout</th><th class="num">Ordinary</th><th class="num">Effect (d)</th><th class="num">Breakouts</th></tr></thead>
+  <tbody>{% for s in signals %}<tr><td>{{ s.description }} <span class="muted"><code>{{ s.signal }}</code></span></td>
+    <td class="num">{{ "%.3f"|format(s.breakout_mean) }}</td><td class="num">{{ "%.3f"|format(s.control_mean) }}</td>
+    <td class="num">{{ "%+.2f"|format(s.cohens_d) }}</td><td class="num">{{ s.n_breakout }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}
+<p class="muted">No breakout signals for this condition.</p>
+{% endif %}
+
+<h2>Model check</h2>
+{% set m = ctx.model %}
+{% if m and m.status == "ok" %}
+<p class="muted">Gradient boosting trained on {{ m.train_t0 }} start years, tested on {{ m.test_t0 }}.
+  {% if m.signal %}<strong class="up">Beats the baseline</strong> — the factors carry out-of-sample signal.{% else %}<strong>Does not beat the baseline</strong> — treat the factors as descriptive.{% endif %}</p>
+<div class="tiles">
+  <div class="tile"><div class="label">Rank correlation (test)</div><div class="value">{{ "%.2f"|format(m.spearman) }}</div></div>
+  <div class="tile"><div class="label">R² vs baseline</div><div class="value">{{ "%.2f"|format(m.r2) }}</div><div class="muted">baseline {{ "%.2f"|format(m.r2_baseline) }}</div></div>
+  <div class="tile"><div class="label">Train / test samples</div><div class="value">{{ "{:,}".format(m.n_train) }} / {{ "{:,}".format(m.n_test) }}</div></div>
+</div>
+{% if ctx.importance %}
+<div class="scroll"><table><thead><tr><th>Feature</th><th class="num">Permutation importance</th></tr></thead>
+  <tbody>{% for f in ctx.importance %}<tr><td><code>{{ f.feature }}</code></td><td class="num">{{ "%.3f"|format(f.importance) }} ± {{ "%.3f"|format(f.importance_std) }}</td></tr>{% endfor %}</tbody></table></div>
+{% endif %}
+{% elif m %}
+<p class="muted">Not enough history for an out-of-sample test yet ({{ m.status }}).</p>
+{% else %}
+<p class="muted">The model was skipped in the last run (<code>--no-model</code>).</p>
+{% endif %}
+{% endif %}
+{% endblock %}

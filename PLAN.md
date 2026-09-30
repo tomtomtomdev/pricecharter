@@ -75,8 +75,9 @@ Local browser over the crawled DB + latest analysis tables. Every page works bef
 - [x] **U5 Analysis on game page** — console index overlay, `series_metrics` (excess returns, drawdown, biggest jump),
       rising label, curve cluster, watchlist membership; hidden when tables are missing.
 - [x] **U6 Console page `/consoles/{slug}`** — index chart per condition, top risers/fallers by excess return, coverage.
-- [ ] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;
-      extract the chart/table builders from `analysis/report.py` into a shared module (report output unchanged).
+- [x] **U7 Insights `/insights`** — factor lift, patterns, curve shapes, pre-breakout signals, model importance;
+      `analysis/stored.py` rebuilds the result from persisted tables and feeds `report.context()` (report output
+      byte-identical, tested); `/report` serves the full static report.
 - [ ] **U8 Watchlist `/watchlist`** — sortable table linking to game pages, filter by console/condition.
 - [ ] **U9 Compare `/compare?ids=…`** — overlay up to 6 titles, raw price or rebased to 100 / vs console index;
       "add to compare" from browse and game pages.

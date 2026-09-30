@@ -2,12 +2,14 @@
 
 import math
 import sqlite3
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -108,7 +110,58 @@ def create_app(db_path: Path, stale_days: float = 7) -> FastAPI:
             "fallers": queries.movers(conn, console, cond, rising=False),
         })
 
+    @app.get("/insights")
+    def insights(request: Request, conn: Conn, cond: Literal["loose", "cib", "new"] = "loose"):
+        res = _stored(app, conn)
+        if res is None:
+            return templates.TemplateResponse(request, "insights.html", {"ctx": None, "cond": cond})
+        from ..analysis import report
+
+        ctx = report.context(res)
+        patterns = [{**r, "links": _example_links(r["example_ids"], res.games)} for r in ctx["patterns"].get(cond, [])]
+        return templates.TemplateResponse(request, "insights.html", {
+            "ctx": ctx, "cond": cond, "p": ctx["p"], "patterns": patterns,
+            "factors": ctx["factors"].get(cond, []), "signals": ctx["signals"].get(cond, []),
+            "factor_bars": report.factor_bars(res.factor_lift).get(cond),
+            "cluster_lines": report.cluster_traces(res.cluster_summary) if not res.cluster_summary.empty else [],
+        })
+
+    @app.get("/report", response_class=HTMLResponse)
+    def full_report(conn: Conn):
+        res = _stored(app, conn)
+        if res is None:
+            raise HTTPException(404, "no analysis yet; run ./run.sh analyze")
+        from ..analysis import report
+
+        return report.render_html(res)
+
     return app
+
+
+_stored_lock = threading.Lock()
+
+
+def _stored(app: FastAPI, conn: sqlite3.Connection):
+    """Latest persisted AnalysisResult, reloaded only when a new analysis run appears."""
+    last = queries.last_analysis(conn)
+    if last is None:
+        return None
+    key = (last["id"], last["ran_at"])
+    with _stored_lock:
+        if getattr(app.state, "stored_key", None) != key:
+            from ..analysis.stored import load_stored  # pandas stack only when analysis pages are used
+
+            app.state.stored, app.state.stored_key = load_stored(conn), key
+        return app.state.stored
+
+
+def _example_links(ids: str | None, games) -> list[dict]:
+    out = []
+    for gid in filter(None, (ids or "").split(",")):
+        if int(gid) in games.index:
+            g = games.loc[int(gid)]
+            out.append({"id": int(gid), "name": g["name"], "console": g["console"]})
+    return out
 
 
 def _history_table(hist: dict[str, list[tuple[str, int]]]) -> list[dict]:

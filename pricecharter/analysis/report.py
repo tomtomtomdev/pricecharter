@@ -15,7 +15,7 @@ TOP_PATTERNS = 20
 _env = Environment(loader=PackageLoader("pricecharter.analysis", "templates"), autoescape=select_autoescape())
 
 
-def _index_traces(idx: pd.DataFrame) -> dict[str, list[dict]]:
+def index_traces(idx: pd.DataFrame) -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {}
     for cond, grp in idx.groupby("condition"):
         traces = []
@@ -30,7 +30,7 @@ def _index_traces(idx: pd.DataFrame) -> dict[str, list[dict]]:
     return out
 
 
-def _factor_bars(lift: pd.DataFrame) -> dict[str, dict]:
+def factor_bars(lift: pd.DataFrame) -> dict[str, dict]:
     out = {}
     for cond, grp in lift.groupby("condition"):
         top = grp[grp["lift_lo"] > 1].head(TOP_FACTORS).iloc[::-1]
@@ -44,14 +44,14 @@ def _factor_bars(lift: pd.DataFrame) -> dict[str, dict]:
     return out
 
 
-def _cluster_traces(summary: pd.DataFrame) -> list[dict]:
+def cluster_traces(summary: pd.DataFrame) -> list[dict]:
     return [
         {"name": f"{r.shape} ({r.n})", "y": json.loads(r.centroid)}
         for r in summary.sort_values("end_value", ascending=False).itertuples()
     ]
 
 
-def _clusters(res: AnalysisResult) -> list[dict]:
+def clusters(res: AnalysisResult) -> list[dict]:
     if res.cluster_summary.empty:
         return []
     out = []
@@ -65,7 +65,7 @@ def _clusters(res: AnalysisResult) -> list[dict]:
     return out
 
 
-def _names(ids: str, games: pd.DataFrame) -> list[str]:
+def names(ids: str, games: pd.DataFrame) -> list[str]:
     out = []
     for gid in filter(None, (ids or "").split(",")):
         gid = int(gid)
@@ -83,7 +83,7 @@ def context(res: AnalysisResult) -> dict:
     patterns = {}
     for cond, grp in res.patterns.groupby("condition"):
         patterns[cond] = [
-            {**r, "examples": _names(r["example_ids"], res.games)} for r in grp.head(TOP_PATTERNS).to_dict("records")
+            {**r, "examples": names(r["example_ids"], res.games)} for r in grp.head(TOP_PATTERNS).to_dict("records")
         ]
     factors = {
         cond: grp[grp["lift_lo"] > 1].head(TOP_FACTORS).to_dict("records")
@@ -95,10 +95,10 @@ def context(res: AnalysisResult) -> dict:
         "consoles": json.loads(res.params["consoles"]),
         "factors": factors,
         "patterns": patterns,
-        "chart_json": _json_for_script({"index": _index_traces(res.console_index),
-                                        "factors": _factor_bars(res.factor_lift),
-                                        "clusters": _cluster_traces(res.cluster_summary)}),
-        "clusters": _clusters(res),
+        "chart_json": _json_for_script({"index": index_traces(res.console_index),
+                                        "factors": factor_bars(res.factor_lift),
+                                        "clusters": cluster_traces(res.cluster_summary)}),
+        "clusters": clusters(res),
         "watch": {c: g.head(25).to_dict("records") for c, g in res.watchlist.groupby("condition")}
         if not res.watchlist.empty else {},
         "signals": {c: g.to_dict("records") for c, g in res.pre_breakout.groupby("condition")}
@@ -108,8 +108,12 @@ def context(res: AnalysisResult) -> dict:
     }
 
 
+def render_html(res: AnalysisResult) -> str:
+    return _env.get_template("report.html.j2").render(**context(res))
+
+
 def render_report(res: AnalysisResult, path: Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_env.get_template("report.html.j2").render(**context(res)))
+    path.write_text(render_html(res))
     return path
