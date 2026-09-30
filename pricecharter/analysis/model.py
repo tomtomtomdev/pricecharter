@@ -29,20 +29,29 @@ GAP = 2  # month gap tolerance, as in metrics
 
 
 def build_samples(
-    history: pd.DataFrame, index: pd.DataFrame, games: pd.DataFrame, window: int = 36
+    history: pd.DataFrame, index: pd.DataFrame, games: pd.DataFrame, window: int = 36,
+    t0s: list[pd.Timestamp] | None = None, with_target: bool = True,
 ) -> pd.DataFrame:
+    """Feature rows at each t0 (default: every January with a full target window).
+
+    With `with_target=False` rows need only a price at t0 — used to score titles today.
+    """
     parts = []
     last = history["month"].max()
     for (console, cond), hist in history.groupby(["console", "condition"]):
         panel = to_panel(hist).ffill(limit=GAP)
         lvl = index[(index["console"] == console) & (index["condition"] == cond)].set_index("month")["level"]
         lvl = lvl.reindex(panel.index).ffill()
-        for t0 in panel.index[panel.index.month == 1]:
+        candidates = [pd.Timestamp(t) for t in t0s] if t0s is not None else panel.index[panel.index.month == 1]
+        for t0 in candidates:
+            if t0 < panel.index[0] or t0 > panel.index[-1]:
+                continue
             t1 = t0 + pd.DateOffset(months=window)
-            if t1 > min(last, panel.index[-1]):
+            if with_target and t1 > min(last, panel.index[-1]):
                 break
-            p0, p1 = panel.loc[t0], panel.loc[t1]
-            ok = p0.notna() & p1.notna()
+            p0 = panel.loc[t0]
+            p1 = panel.loc[t1] if with_target else None
+            ok = p0.notna() & p1.notna() if with_target else p0.notna()
             if not ok.any():
                 continue
             tm = t0 - pd.DateOffset(months=12)
@@ -53,8 +62,9 @@ def build_samples(
             df = pd.DataFrame({
                 "game_id": panel.columns[ok], "console": console, "condition": cond, "t0": t0,
                 "log_price_t0": p0[ok].to_numpy(), "momentum_12m": momentum[ok].to_numpy(),
-                "target": ((p1 - p0) - (lvl[t1] - lvl[t0]))[ok].to_numpy(),
             })
+            if with_target:
+                df["target"] = ((p1 - p0) - (lvl[t1] - lvl[t0]))[ok].to_numpy()
             parts.append(df)
     if not parts:
         return pd.DataFrame(columns=["game_id", "console", "condition", "t0", "target", *FEATURES])
@@ -91,6 +101,18 @@ class ModelResult:
     summary: dict
     importance: pd.DataFrame
     model: HistGradientBoostingRegressor | None = None
+    features: list[str] | None = None
+    categories: dict | None = None
+
+
+def predict(fitted: ModelResult, samples: pd.DataFrame) -> np.ndarray:
+    """Predicted excess return for feature rows (e.g. build_samples(..., with_target=False))."""
+    X = _matrix(samples)[fitted.features]
+    for c, cats in fitted.categories.items():
+        X[c] = X[c].astype(str).where(X[c].astype(str).isin(cats), "unknown").astype(
+            pd.CategoricalDtype(categories=cats))
+    with threadpool_limits(THREADS):
+        return fitted.model.predict(X)
 
 
 def fit_model(samples: pd.DataFrame, window: int = 36, seed: int = 0) -> ModelResult:
@@ -144,4 +166,8 @@ def _fit(samples: pd.DataFrame, window: int, seed: int) -> ModelResult:
         "top_quintile_precision": float(np.mean(hits)) if hits else None,
         "signal": bool(rho > SIGNAL_SPEARMAN and r2 > r2_base),
     }
-    return ModelResult(summary, importance, model)
+    cats = {c: Xtr[c].cat.categories.tolist() for c in CATEGORICAL if c in used}
+    for c in cats:
+        if "unknown" not in cats[c]:
+            cats[c] = [*cats[c], "unknown"]
+    return ModelResult(summary, importance, model, used, cats)

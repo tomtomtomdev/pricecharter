@@ -86,3 +86,8 @@ def test_clusters_persisted(db):
 def test_pre_breakout_persisted(db):
     persist(db, analyze(db, model=False))
     assert _count(db, "pre_breakout") > 0
+
+
+def test_watchlist_persisted(db):
+    persist(db, analyze(db, model=False))
+    assert _count(db, "watchlist") > 0

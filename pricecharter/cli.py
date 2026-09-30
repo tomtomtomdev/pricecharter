@@ -63,6 +63,10 @@ def run_analyze(args: argparse.Namespace) -> None:
         print(f"\n[{cond}] top patterns")
         for r in grp.head(10).itertuples():
             print(f"  {r.items:<60} {r.lift:4.2f}x  >={r.lift_lo:4.2f}x  n={r.n}")
+    for cond, grp in res.watchlist.groupby("condition"):
+        print(f"\n[{cond}] watchlist")
+        for r in grp.head(5).itertuples():
+            print(f"  {r.name[:48]:<48} {r.console:<18} score {r.score:5.2f}")
     m = res.model_summary
     if m.get("status") == "ok":
         verdict = "beats baseline" if m["signal"] else "no out-of-sample signal"

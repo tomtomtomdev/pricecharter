@@ -131,10 +131,12 @@ def sales_factors(sales: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
 
 
 def build_factors(
-    labeled: pd.DataFrame, games: pd.DataFrame, history: pd.DataFrame, sales: pd.DataFrame, window: int = 36
+    labeled: pd.DataFrame, games: pd.DataFrame, history: pd.DataFrame, sales: pd.DataFrame, window: int = 36,
+    start: pd.Timestamp | None = None,
 ) -> pd.DataFrame:
+    """Price factors are measured at `start` (default: beginning of the window)."""
     asof = labeled["asof"].iloc[0]
-    start = asof - pd.DateOffset(months=window)
+    start = pd.Timestamp(start) if start is not None else asof - pd.DateOffset(months=window)
     out = labeled[["game_id", "console", "condition", "rising", f"excess_{window}m"]].copy()
     out = out.merge(game_factors(games), left_on="game_id", right_index=True, how="left")
     out = out.merge(price_factors(history, start), on=["game_id", "condition"], how="left")

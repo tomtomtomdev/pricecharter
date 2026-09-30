@@ -16,9 +16,11 @@ from .metrics import series_metrics
 from .model import build_samples, fit_model
 from .patterns import mine_patterns
 from .signals import pre_breakout_signals
+from .watchlist import watchlist
 
 TABLES = ["console_index", "series_metrics", "factor_lift", "patterns"]
-OPTIONAL_TABLES = ["model_importance", "curve_clusters", "cluster_summary", "cluster_profile", "pre_breakout"]
+OPTIONAL_TABLES = ["model_importance", "curve_clusters", "cluster_summary", "cluster_profile", "pre_breakout",
+                   "watchlist"]
 PATTERN_FACTORS = [c for c in CATEGORICAL if c not in ("developer",)]
 
 
@@ -38,6 +40,9 @@ class AnalysisResult:
     cluster_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
     cluster_profile: pd.DataFrame = field(default_factory=pd.DataFrame)
     pre_breakout: pd.DataFrame = field(default_factory=pd.DataFrame)
+    sales: pd.DataFrame = field(default_factory=pd.DataFrame, repr=False)
+    model_fit: object = field(default=None, repr=False)
+    watchlist: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def analyze(
@@ -51,7 +56,8 @@ def analyze(
     games = load_games(conn)
     idx = console_index(history)
     metrics = label_rising(series_metrics(history, idx, asof=asof), window=window, top=top)
-    factors = build_factors(metrics, games, history, load_sales(conn), window=window)
+    sales = load_sales(conn)
+    factors = build_factors(metrics, games, history, sales, window=window)
     support = max(5, min(min_support, int(factors["rising"].notna().sum() * 0.02)))
     lift = factor_lift(factors, CATEGORICAL, min_support=support)
     patterns = mine_patterns(factors, PATTERN_FACTORS, min_count=support)
@@ -62,14 +68,15 @@ def analyze(
         "min_support": support, "n_series": len(metrics), "n_labeled": int(metrics["rising"].notna().sum()),
         "base_rate": float(metrics["rising"].mean()) if metrics["rising"].notna().any() else None,
     }
-    res = AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history)
+    res = AnalysisResult(params, idx, metrics, factors, lift, patterns, games, history, sales=sales)
     res.curve_clusters, res.cluster_summary = cluster_curves(curve_matrix(history, idx), k=clusters)
     if not res.curve_clusters.empty:
         res.cluster_profile = profile_clusters(res.curve_clusters, factors, CATEGORICAL, min_support=support)
     res.pre_breakout = pre_breakout_signals(history, idx)
     if model:
         fitted = fit_model(build_samples(history, idx, games, window=window), window=window)
-        res.model_summary, res.model_importance = fitted.summary, fitted.importance
+        res.model_summary, res.model_importance, res.model_fit = fitted.summary, fitted.importance, fitted
+    res.watchlist = watchlist(res)
     return res
 
 

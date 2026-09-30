@@ -160,6 +160,27 @@
   {% endif %}
   {% endif %}
 
+  {% if watch %}
+  <h2>Watchlist</h2>
+  <p class="sub">Titles whose traits today match the rising patterns{% if model and model.signal %}, combined with the model's forecast{% endif %}. A screen for further research, not a price forecast.</p>
+  {% for c in conditions %}
+  <div class="scroll" data-panel="{{ c }}" {% if not loop.first %}hidden{% endif %}>
+    <table>
+      <thead><tr><th>Title</th><th class="num">Price</th><th class="num">Score</th>{% if model and model.signal %}<th class="num">Model</th>{% endif %}<th>Matches</th></tr></thead>
+      <tbody>
+      {% for w in watch.get(c, []) %}
+        <tr><td>{{ w.name }} <span class="ex">({{ w.console }}){% if w.already_rising %} · already rising{% endif %}</span></td>
+            <td class="num">{{ "${:,.2f}".format(w.price_cents / 100) if w.price_cents == w.price_cents and w.price_cents is not none else "–" }}</td>
+            <td class="num lift">{{ "%.2f" | format(w.score) }}</td>
+            {% if model and model.signal %}<td class="num">{{ "%+.0f%%" | format(w.model_pred * 100) if w.model_pred == w.model_pred else "–" }}</td>{% endif %}
+            <td class="ex"><code>{{ w.matched or "—" }}</code></td></tr>
+      {% else %}<tr><td colspan="5">No titles to score.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+  {% endif %}
+
   <h2>Caveats</h2>
   <ul class="caveats">
     <li><b>Correlation, not cause.</b> A pattern says these titles tended to rise, not why.</li>

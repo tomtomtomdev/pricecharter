@@ -70,7 +70,20 @@ job runs on wake, but only on Saturday or Sunday. To wake the Mac for it:
 
 Each title's monthly price is compared to its console's median index (so the 2020–21 boom
 doesn't count as a pattern). "Rising" = top 20% of 36-month excess return per console × condition.
-Writes `console_index`, `series_metrics`, `factor_lift`, `patterns` and logs `analysis_runs`.
+
+| Step | Output table | Report section |
+|---|---|---|
+| Console index (median monthly move) | `console_index` | Console price index |
+| Per-series returns, excess vs index, slope, volatility, drawdown, biggest jump | `series_metrics` | — |
+| Factor lift with 95% Wilson ranges | `factor_lift` | Top rising factors |
+| Factor combinations (≤3 traits, non-redundant) | `patterns` | Rising patterns |
+| Curve-shape clusters + over-represented traits | `curve_clusters`, `cluster_summary`, `cluster_profile` | Curve shapes |
+| Signals in the 12 months before the biggest jumps | `pre_breakout` | Before the jumps |
+| Out-of-sample model check (time split) + permutation importance | `model_summary`, `model_importance` | Model check |
+| Current titles matching the patterns (+ model forecast if it has signal) | `watchlist` | Watchlist |
+
+Every run is logged in `analysis_runs`; the report goes to `reports/analysis-<asof>.html`
+(`--report PATH`, `--no-report`, `--no-model` to skip the slowest step).
 
 ## Tests
 

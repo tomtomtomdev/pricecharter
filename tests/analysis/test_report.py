@@ -67,3 +67,8 @@ def test_curve_shapes_section(result, tmp_path):
 def test_before_jumps_section(result, tmp_path):
     html = render_report(result, tmp_path / "r.html").read_text()
     assert "Before the jumps" in html and "cib_loose_change_12m" in html
+
+
+def test_watchlist_section(result, tmp_path):
+    html = render_report(result, tmp_path / "r.html").read_text()
+    assert "Watchlist" in html

@@ -54,4 +54,4 @@ Each slice: **write failing test → implement → `uv run pytest` green → tic
 - [x] **A10 Model** — time-split HistGB on excess return, baseline comparison, permutation importance → `model_importance`.
 - [x] **A11 Curve shapes** — KMeans on normalized curves, profile clusters by factors → `curve_clusters`.
 - [x] **A12 Pre-breakout signals** — what changed 6–12 months before the biggest jumps.
-- [ ] **A13 Watchlist** — current titles best matching rising patterns, in the report.
+- [x] **A13 Watchlist** — current titles best matching rising patterns, in the report.
