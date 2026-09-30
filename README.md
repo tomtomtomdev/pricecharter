@@ -85,6 +85,28 @@ doesn't count as a pattern). "Rising" = top 20% of 36-month excess return per co
 Every run is logged in `analysis_runs`; the report goes to `reports/analysis-<asof>.html`
 (`--report PATH`, `--no-report`, `--no-model` to skip the slowest step).
 
+## Web UI
+
+```sh
+./run.sh serve                       # http://127.0.0.1:8000, reads pricecharter.db
+./run.sh serve --db other.db --http-port 9000 --host 0.0.0.0
+```
+
+A local browser over the crawled data and the latest analysis. It opens the DB read-only, so
+it's safe to leave running during the weekend crawl. Pages that need analysis say so until
+`./run.sh analyze` has run. Chrome isn't needed for `serve` or `analyze`.
+
+| Page | What's there |
+|---|---|
+| `/` Dashboard | titles listed / fetched / stale / with history per console, recent crawl runs, last analysis |
+| `/games` | search, filter (platform, region, console, genre), sort by price, rank, name or 3y excess return; tick titles to compare |
+| `/games/<id>` | current prices, monthly history chart (log scale, console-index overlay) with a table view, recent sales, analysis metrics, watchlist matches |
+| `/consoles/<slug>` | console price index per condition, biggest risers and fallers |
+| `/insights` | rising factors, patterns (with example titles), curve shapes, pre-breakout signals, model check |
+| `/watchlist` | titles matching rising patterns, by condition and console |
+| `/compare?ids=1,2` | up to 6 titles: price, rebased to 100, or vs their console index |
+| `/report` | the full static analysis report, rendered from the stored tables |
+
 ## Tests
 
 ```sh

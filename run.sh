@@ -3,10 +3,13 @@
 #   ./run.sh                      # list + details for all consoles
 #   ./run.sh list -c nes ps2      # any pricecharter CLI args pass through
 #   ./run.sh details --limit 20
+#   ./run.sh serve                # web UI on http://127.0.0.1:8000
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [[ ! -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
+CHROME="${PRICECHARTER_CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+# Only the crawl stages drive Chrome; analyze and serve just read the DB.
+if [[ "${1:-all}" != "serve" && "${1:-all}" != "analyze" && ! -x "$CHROME" ]]; then
   echo "Google Chrome is required (the crawler drives real headed Chrome)." >&2
   echo "Install it from https://www.google.com/chrome/ and re-run." >&2
   exit 1
